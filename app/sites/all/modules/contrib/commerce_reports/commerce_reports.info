@@ -1,0 +1,29 @@
+name = Reports
+description = Provides reporting for sales, products, customers and payment gateways.
+package = Commerce (reporting)
+dependencies[] = visualization
+dependencies[] = commerce
+dependencies[] = commerce_customer
+dependencies[] = commerce_line_item
+dependencies[] = commerce_order
+dependencies[] = commerce_payment
+dependencies[] = commerce_price
+dependencies[] = commerce_product
+dependencies[] = date
+core = 7.x
+
+; Views includes
+files[] = includes/views/commerce_reports.views.inc
+
+; Views handlers
+files[] = includes/views/commerce_reports_handler_field_date.inc
+
+; Tests
+files[] = tests/commerce_reports.test
+
+; Information added by drupal.org packaging script on 2012-12-02
+version = "7.x-3.0-beta2"
+core = "7.x"
+project = "commerce_reports"
+datestamp = "1354467400"
+

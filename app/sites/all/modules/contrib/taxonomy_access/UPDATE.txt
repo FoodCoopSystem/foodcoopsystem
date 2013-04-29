@@ -1,0 +1,29 @@
+READ THIS FILE if you are updating from previous versions of 
+  'taxonomy_access.module'.
+
+If you are installing taxonomy_access.module for the first time, you may ignore
+  this file.
+
+-----------------------
+UPDATING
+-----------------------
+
+1. DISABLE THE MODULE on page: 
+   "Administration >> Modules"
+   (http://www.example.com/admin/modules).
+
+2. BACK UP your database.
+
+3. COPY the new taxonomy_access directory over the existing module directory
+   (By default: sites/all/modules/taxonomy_access/ in your Drupal directory.)
+
+4. LOG IN AS MAIN ADMINISTRATOR (user with user ID 1).
+
+5. ENABLE THE MODULE on page: 
+   "Administration >> Modules"
+   (http://www.example.com/admin/modules).
+
+6. RUN UPDATE.PHP by visiting:
+   http://www.example.com/update.php
+
+7. TEST YOUR SITE'S ACCESS CONTROL.  If there are problems, see the README.txt.

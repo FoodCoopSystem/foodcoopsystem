@@ -1,0 +1,27 @@
+.view-commerce-reports-sales .form-item-startDate .form-item,
+.view-commerce-reports-sales .form-item-endDate .form-item {
+  display: block;
+  float: none;
+  padding: 0;
+}
+
+.view-commerce-reports-sales .form-item-startDate .form-type-select,
+.view-commerce-reports-sales .form-item-endDate .form-type-select {
+	display: inline-block;
+	width: 100px;
+}
+
+.view-commerce-reports-sales .form-item-startDate label,
+.view-commerce-reports-sales .form-item-endDate label {
+	float: inherit;
+	display: block;
+}
+
+.view-commerce-reports-sales #edit-startdate,
+.view-commerce-reports-sales #edit-enddate {
+	display: block;
+}
+
+#edit-submit-commerce-reports-sales {
+	margin-top: 15px;
+}

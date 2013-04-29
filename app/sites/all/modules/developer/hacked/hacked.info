@@ -1,0 +1,15 @@
+name = "Hacked!"
+description = "Shows if drupal or any of its modules have been changed"
+package = Development
+core = 7.x
+;dependencies[] = diff
+dependencies[] = update
+files[] = includes/hacked_project.inc
+configure = admin/reports/hacked/settings
+
+; Information added by drupal.org packaging script on 2012-03-04
+version = "7.x-2.0-beta4"
+core = "7.x"
+project = "hacked"
+datestamp = "1330848043"
+

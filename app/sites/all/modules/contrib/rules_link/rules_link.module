@@ -1,0 +1,491 @@
+<?php
+
+/**
+ * @file
+ * Rules Link - module file.
+ */
+
+/**
+ * Implements hook_entity_info().
+ */
+function rules_link_entity_info() {
+  return array(
+    'rules_link' => array(
+      'label' => t('Rules Link'),
+      'entity class' => 'RulesLink',
+      'controller class' => 'EntityAPIControllerExportable',
+      'base table' => 'rules_link',
+      'fieldable' => TRUE,
+      'entity keys' => array(
+        'id' => 'id',
+        'name' => 'name',
+        'label' => 'label',
+      ),
+      'exportable' => TRUE,
+      'module' => 'rules_link',
+      'access callback' => 'rules_link_access',
+      // Enable the entity API's admin UI.
+      'admin ui' => array(
+        'path' => 'admin/config/workflow/rules_links',
+        'file' => 'rules_link.admin.inc',
+        'controller class' => 'RulesLinkUIController',
+      ),
+    ),
+  );
+}
+
+/**
+ * Access callback for the entity API.
+ */
+function rules_link_access($op, $type = NULL, $account = NULL) {
+  return user_access('administer rules links', $account);
+}
+
+/**
+ * Menu argument loader; Load a rules link by string.
+ *
+ * @param $name
+ *   The machine-readable name of a rules link to load.
+ * @return
+ *   A rules link array or FALSE if $name does not exist.
+ */
+function rules_link_load($name) {
+  return rules_link_get_links($name);
+}
+
+/**
+ * Implements hook_permission().
+ */
+function rules_link_permission() {
+  $permissions = array(
+    'administer rules links' => array(
+      'title' => t('Administer rules links'),
+      'description' => t('Create and delete rules links and set their permissions.'),
+    ),
+  );
+  foreach (rules_link_get_links() as $link) {
+    $name = check_plain($link->name);
+    $permissions += array(
+      "access rules link $name" => array(
+        'title' => t('%link_label: Execute rules link', array('%link_label' => $link->label)),
+      ),
+    );
+  }
+  return $permissions;
+}
+
+/**
+ * Gets an array of all rules links, keyed by the type name.
+ *
+ * @param $link_names
+ *    If set, the function will return the link with the given name.
+ * @return RuleLinks[]
+ *    Depending on isset $link_names, a name single or an array of rules links.
+ */
+function rules_link_get_links($link_names = NULL) {
+  $links = entity_load_multiple_by_name('rules_link', isset($link_names) ? array($link_names) : FALSE);
+  return isset($link_names) ? reset($links) : $links;
+}
+
+/**
+ * Returns the name condition set to a rules link.
+ */
+function rules_link_get_condition_set_name($rules_link) {
+  return 'rules_link_condition_' . $rules_link->name;
+}
+
+/**
+ * Returns the name condition set to a rules link.
+ */
+function rules_link_get_rules_set_name($rules_link) {
+  return 'rules_link_set_' . $rules_link->name;
+}
+
+/**
+ * Loads and returns the condition to a link. If it
+ * doesn't exist, a new one will be created.
+ *
+ * @param $rules_link
+ *    The rules link to which the condition should be loaded.
+ */
+function rules_link_load_condition_set($rules_link) {
+  $condition_set = rules_config_load(rules_link_get_condition_set_name($rules_link));
+  if ($condition_set != FALSE) {
+    return $condition_set;
+  }
+  else {
+    $conditions = rules_and(array(
+      $rules_link->entity_type => array('type' => $rules_link->entity_type, 'label' => $rules_link->entity_type),
+    ));
+    $conditions->label = 'Rules link: ' . $rules_link->label . ' condition';
+    $conditions->save(rules_link_get_condition_set_name($rules_link), 'rules_link');
+    return $conditions;
+  }
+}
+
+/**
+ * Loads and returns the rules set to a link. If it
+ * doesn't exist, a new one will be created.
+ *
+ * @param $rules_link
+ *    The rules link to which the condition or rules set should be loaded.
+ */
+function rules_link_load_rules_set($rules_link) {
+  $rule_set = rules_config_load(rules_link_get_rules_set_name($rules_link));
+  if ($rule_set != FALSE) {
+    return $rule_set;
+  }
+  else {
+    $rule_set = rules_rule_set(array(
+      $rules_link->entity_type => array('type' => $rules_link->entity_type, 'label' => $rules_link->entity_type),
+    ));
+    $rule_set->label = 'Rules link: ' . $rules_link->label . ' rules set';
+    $rule_set->save(rules_link_get_rules_set_name($rules_link), 'rules_link');
+    return $rule_set;
+  }
+}
+
+/**
+ * Renders a link using the name of the rules_link and the entity id.
+ *
+ * @param $rules_link_name
+ *    The name the link which should be rendered.
+ * @param $entity_id
+ *    The entity id of entity on which the rule should be triggered.
+ * @param $destination
+ *    The destination to which the Rules Module should redirect the user after
+ *    triggering the link.
+ * @param $parameters
+ *    Additional parameters for the Rules components of the link.
+ *
+ * @return
+ *   A renderable array.
+ */
+function rules_link_render($rules_link_name, $entity_id, $destination = NULL, $parameters = array()) {
+  $rules_link = rules_link_load($rules_link_name);
+  return rules_link_render_link($rules_link, $entity_id, $destination, $parameters);
+}
+
+/**
+ * Renders a link.
+ *
+ * @param $rules_link
+ *    The link which should be rendered.
+ * @param $entity_id
+ *    The entity id of entity on which the rule should be triggered.
+ * @param $destination
+ *    The destination to which the Rules Module should redirect the user after
+ *    triggering the link.
+ * @param $parameters
+ *    Additional parameters for the Rules components of the link.
+ *
+ * @return
+ *   A renderable array.
+ */
+function rules_link_render_link($rules_link, $entity_id, $destination = NULL, $parameters = array()) {
+  if (rules_link_check_visibility($rules_link, array_merge(array($entity_id), $parameters))) {
+    $path = $rules_link->path . '/' . $entity_id;
+    if (count($parameters) > 0) {
+      $path .= '/' . implode('/', $parameters);
+    }
+    $path .= $rules_link->settings['link_type'] == 'confirm' ? '' : '/' . rules_link_get_token($entity_id);
+
+    $link = array(
+      '#type' => 'link',
+      '#title' => $rules_link->settings['text'],
+      '#href' => $path,
+      '#attributes' => array('class' => array('rules-link')),
+      '#prefix' => '<span class="rules-link-wrapper">',
+      '#suffix' => '</span>'
+    );
+    if ($rules_link->settings['link_type'] == 'javascript') {
+      $link['#attributes']['class'][] = 'rules-link-js';
+      drupal_add_js(drupal_get_path('module', 'rules_link') . '/rules_link.js', 'file');
+      drupal_add_css(drupal_get_path('module', 'rules_link') . '/rules_link.css', 'file');
+    }
+    else {
+      $link['#options'] = array('query' => $destination);
+    }
+    return $link;
+  }
+  return array();
+}
+
+/**
+ * Trims a whitespaces from a parameter.
+ */
+function rules_link_trim_parameters(&$value) {
+    $value = trim($value);
+}
+
+/**
+ * Custom Entity class.
+ */
+class RulesLink extends Entity {
+
+  public $settings = array();
+
+  public function __construct($values = array()) {
+    parent::__construct($values, 'rules_link');
+  }
+
+  /**
+   * Override save function.
+   */
+  public function save() {
+    parent::save();
+    menu_rebuild();
+  }
+}
+
+
+/**
+ * Generates a token used to protect links from spoofing.
+ */
+function rules_link_get_token($content_id) {
+  // Anonymous users get a less secure token, since it must be the same for all
+  // anonymous users on the entire site to work with page caching.
+  return ($GLOBALS['user']->uid) ? drupal_get_token($content_id) : md5(drupal_get_private_key() . $content_id);
+}
+
+/**
+ * Checks if the given token is correct.
+ */
+function rules_link_check_token($token, $content_id) {
+  return rules_link_get_token($content_id) == $token;
+}
+
+function rules_link_get_paramters() {
+  $args = arg();
+  // Remove the first two arguments, since they are the rules link and the
+  // entity id.
+  array_shift($args);
+  return $args;
+}
+
+function rules_link_invoke_component($name, $args) {
+  if ($component = rules_get_cache('comp_' . $name)) {
+    return $component->executeByArgs($args);
+  }
+}
+
+function rules_link_check_visibility($rules_link, $args) {
+  $rule_set = rules_link_load_rules_set($rules_link);
+  $paramInfo = $rule_set->parameterInfo();
+  return count($args) >= count($paramInfo) && user_access("access rules link " . $rules_link->name) && rules_link_invoke_component(rules_link_get_condition_set_name($rules_link), $args);
+}
+
+/**
+ * Triggers a rule set from a rules link.
+ */
+function rules_link_trigger($rules_link, $entity_id) {
+  rules_link_invoke_component(rules_link_get_rules_set_name($rules_link), rules_link_get_paramters());
+}
+
+/**
+ * Menu callback for javascript links.
+ */
+function rules_link_trigger_js($rules_link, $entity_id) {
+  rules_link_trigger($rules_link, $entity_id);
+  $json = array(
+    'message' => drupal_get_messages(),
+  );
+  drupal_json_output($json);
+}
+
+/**
+ * Menu callback for token links.
+ */
+function rules_link_trigger_token($rules_link, $entity_id) {
+  rules_link_trigger($rules_link, $entity_id);
+  drupal_goto();
+}
+
+/**
+ * Form generator for the menu callback for the confirm form links.
+ */
+function rules_link_trigger_form($form, &$form_state, $rules_link, $entity_id) {
+  $form['link'] = array(
+    '#type' => 'hidden',
+    '#value' => $rules_link->name,
+  );
+  $form['entity_id'] = array(
+    '#type' => 'hidden',
+    '#value' => $entity_id,
+  );
+  return confirm_form($form, $rules_link->settings['confirm_question'], '', $rules_link->settings['confirm_description']);
+}
+
+/**
+ * Submit function for the confirm form links.
+ */
+function rules_link_trigger_form_submit($form, &$form_state) {
+  $args = rules_link_get_paramters();
+  $rules_link = rules_link_load($form_state['values']['link']);
+  rules_link_trigger($rules_link, $form_state['values']['entity_id']);
+}
+
+/**
+ * Access callback function for confirm type links.
+ */
+function rules_link_access_link_confirm($rules_link, $entity_id) {
+  if (rules_link_check_visibility($rules_link, rules_link_get_paramters())) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Access callback function for the token and javascript links.
+ */
+function rules_link_access_link($rules_link, $entity_id) {
+  // The token is always the last element of the argument array.
+  $params = rules_link_get_paramters();
+  $token = array_pop($params);
+  return rules_link_check_token($token, $entity_id) && rules_link_access_link_confirm($rules_link, $entity_id);
+}
+
+/**
+ * Implements hook_menu().
+ */
+function rules_link_menu() {
+  $item = array();
+
+  foreach (rules_link_get_links() as $name => $link) {
+    $first_arg = (count(explode('/', $link->path)));
+    switch ($link->settings['link_type']) {
+      case 'javascript':
+        $item[$link->path . '/%/%'] = array(
+          'page callback' => 'rules_link_trigger_js',
+          'page arguments' => array($link, $first_arg),
+          'access arguments' => array($link, $first_arg, $first_arg + 1),
+          'access callback' => 'rules_link_access_link',
+          'type' => MENU_CALLBACK,
+        );
+        break;
+      case 'token':
+        $item[$link->path . '/%/%'] = array(
+          'page callback' => 'rules_link_trigger_token',
+          'page arguments' => array($link, $first_arg),
+          'access arguments' => array($link, $first_arg, $first_arg + 1),
+          'access callback' => 'rules_link_access_link',
+          'type' => MENU_CALLBACK,
+        );
+        break;
+      case 'confirm':
+        $item[$link->path . '/%'] = array(
+          'page callback' => 'drupal_get_form',
+          'page arguments' => array('rules_link_trigger_form', $link, $first_arg),
+          'access arguments' => array($link, $first_arg),
+          'access callback' => 'rules_link_access_link_confirm',
+          'type' => MENU_CALLBACK,
+        );
+        break;
+    }
+  }
+  return $item;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function rules_link_views_api() {
+  return array(
+    'api' => '3.0',
+  );
+}
+
+/**
+ * Implement hook_entity_view().
+ */
+function rules_link_entity_view($entity, $type, $view_mode, $langcode) {
+  $links = array();
+  $rules_links = rules_link_get_links();
+  foreach ($rules_links as $name => $rules_link) {
+
+    if ($rules_link->entity_type == $type && $rules_link->settings['entity_link']) {
+      list($id, $rev, $bundle) = entity_extract_ids($type, $entity);
+      // If the link is restricted to some bundles, verify the bundle.
+      if ($id && (empty($rules_link->settings['bundles']) || in_array($bundle, $rules_link->settings['bundles']))) {
+        $renderd_link = rules_link_render_link($rules_link, $id, drupal_get_destination());
+        if (!empty($renderd_link)) {
+         $links[$name] =  drupal_render($renderd_link);
+        }
+      }
+    }
+  }
+  foreach ($links as $name => $link) {
+    $entity->content['rules_links_' . $name] = array(
+      '#markup' => $link,
+    );
+  }
+}
+
+
+/**
+ * Implements hook_features_pipe_component_alter() for fields.
+ */
+function rules_link_features_pipe_rules_link_alter(&$pipe, $data, $export) {
+  foreach ($data as $id) {
+    $rules_link = entity_load_single('rules_link', $id);
+    $pipe['rules_config'][] = rules_link_get_condition_set_name($rules_link);
+    $pipe['rules_config'][] = rules_link_get_rules_set_name($rules_link);
+  }
+}
+
+/**
+ * Alter the breadcrumb trail of the rules components.
+ */
+function rules_link_menu_breadcrumb_alter(&$active_trail, $item) {
+  if (substr($item['href'], 22, 34) == 'rules/components/manage/rules_link') {
+
+    // Parse the name out of the link.
+    if (substr($item['href'], 57, 3) == 'set') {
+      $start = 61;
+    }
+    elseif (substr($item['href'], 57, 3) == 'con') {
+      $start = 67;
+    }
+
+    $link_name = substr($item['href'], $start, strlen($item['href']));
+    $pos = strpos($link_name, '/') ;
+    if ($pos !== FALSE) {
+      $link_name = substr($link_name, 0, $pos);
+    }
+
+    $rules_link = rules_link_load($link_name);
+    if ($rules_link) {
+      // Replace the link to Rules with a link to Rules Link.
+      $active_trail[4]['title'] = 'Rules Links';
+      $active_trail[4]['href'] = 'admin/config/workflow/rules_links';
+      $active_trail[4]['options']['attributes']['title'] = 'Manage links that triggers rules.';
+      $active_trail[4]['localized_options'] = array();
+
+      // Replace component link with link to the current rules link.
+      $active_trail[5]['title'] = $rules_link->label;
+      $active_trail[5]['href'] = "admin/config/workflow/rules_links/manage/$link_name/components";
+      $active_trail[5]['options']['attributes']['title'] = 'Edit the current link.';
+      $active_trail[5]['localized_options'] = array();
+    }
+  }
+}
+
+/**
+ * Implements hook_field_extra_fields().
+ */
+function rules_link_field_extra_fields() {
+  $return = array();
+  $rules_links = rules_link_get_links();
+  foreach ($rules_links as $rules_link) {
+    if ($rules_link->settings['entity_link']) {
+      $entity_info = entity_get_info($rules_link->entity_type);
+      $bundles = empty($rules_link->settings['bundles']) ? array_keys($entity_info['bundles']) : $rules_link->settings['bundles'];
+      foreach ($bundles as $bundle) {
+        $return[$rules_link->entity_type][$bundle]['display']['rules_links_' . $rules_link->name]['label'] = $rules_link->label;
+        $return[$rules_link->entity_type][$bundle]['display']['rules_links_' . $rules_link->name]['description'] = '';
+        $return[$rules_link->entity_type][$bundle]['display']['rules_links_' . $rules_link->name]['weight'] = 0;
+      }
+    }
+  }
+  return $return;
+}

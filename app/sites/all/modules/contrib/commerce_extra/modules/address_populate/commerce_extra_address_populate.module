@@ -1,0 +1,106 @@
+<?php
+/**
+ * @file
+ * Provides Address Populate functionality.
+ */
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ *
+ * Creates a setting element for letting administrator to choose where the
+ * default values should be cloned from. Address fields should be attached
+ * to user entity.
+ *
+ */
+function commerce_extra_address_populate_form_commerce_checkout_pane_settings_form_alter(&$form, &$form_state) {
+  if ($form['checkout_pane']['#value']['base'] == 'commerce_customer_profile_pane') {
+
+    // Load user entity and look for address fields
+    $fields = field_info_instances('user');
+    $address_fields = array();
+    foreach ($fields['user'] as $field_name => $field) {
+      if ($field['widget']['type'] == 'addressfield_standard') {
+        $address_fields[$field_name] = $field['label'];
+      }
+    }
+
+    // Find out current value if set
+    $pane_id = $form['checkout_pane']['#value']['pane_id'];
+    $setting = variable_get('commerce_extra_address_populate_settings', array());
+    $default_value = isset($setting[$pane_id]) ? $setting[$pane_id] : '';
+
+    // Declare a setting element for address field selection
+    $form['settings']['commerce_extra_address_populate'] = array(
+      '#type' => 'select',
+      '#title' => t('Select account\'s address field'),
+      '#empty_value' => '',
+      '#default_value' => $default_value,
+      '#description' => t('Select the address field where the information gets cloned from.'),
+      '#options' => $address_fields,
+    );
+
+    // Make sure we get callbacked after form gets submitted
+    $form['submit']['#submit'][] = '_commerce_extra_address_populate_settings_form_submit';
+
+  }
+}
+
+/**
+ * Implements hook_field_attach_form().
+ *
+ * When loading the customer profile information form elements, it should set
+ * default values if user is logged in and user has address information.
+ *
+ */
+function commerce_extra_address_populate_field_attach_form($entity_type, $entity, &$form, &$form_state, $langcode) {
+
+  // Ensure, we're attaching field into right entity type
+  if ($entity_type == 'commerce_customer_profile') {
+
+    // User must be logged in, so default values can be read
+    if (user_is_logged_in()) {
+
+      // Get user address field which contains default values
+      $settings = variable_get('commerce_extra_address_populate_settings', array());
+      $user_address_field = '';
+      if (isset($form['#parents'][0])) {
+        if (isset($settings[$form['#parents'][0]])) {
+          $user_address_field = $settings[$form['#parents'][0]];
+        }
+      }
+      if (!empty($user_address_field)) {
+        global $user;
+        $user_fields = user_load($user->uid);
+        if (isset($user_fields->{$user_address_field}) && !empty($user_fields->{$user_address_field})) {
+
+          // Loop thru user address values and add them as default values
+          $langcode = is_null($langcode) ? LANGUAGE_NONE : $langcode;
+          foreach ($user_fields->{$user_address_field}[$langcode][0] as $key => $value) {
+            if (isset($form['commerce_customer_address'][$langcode][0]['#address'][$key])) {
+              $form['commerce_customer_address'][$langcode][0]['#address'][$key] = $value;
+            }
+          }
+        }
+      }
+
+    }
+
+  }
+
+}
+
+/**
+ * Callback function for processing our select element.
+ * @see commerce_extra_address_populate_form_commerce_checkout_pane_settings_form_alter()
+ */
+function _commerce_extra_address_populate_settings_form_submit(&$form, &$form_state) {
+
+  // Retrieve current state of variable and pane id
+  $settings = variable_get('commerce_extra_address_populate_settings', array());
+  $pane_id = $form['checkout_pane']['#value']['pane_id'];
+
+  // Set settings and save it
+  $settings[$pane_id] = check_plain($form_state['values']['commerce_extra_address_populate']);
+  variable_set('commerce_extra_address_populate_settings', $settings);
+
+}

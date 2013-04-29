@@ -1,0 +1,28 @@
+<?php
+
+/**
+ * @file
+ * Default Shipping UI for Drupal Commerce.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_shipping_ui_menu() {
+  $items = array();
+
+  // Payment method Rules administration page.
+  $items['admin/commerce/config/shipping-methods'] = array(
+    'title' => 'Shipping methods',
+    'description' => 'Enable and configure shipping method rule configurations.',
+    'page callback' => 'commerce_shipping_ui_admin_page',
+    'access arguments' => array('configure store'),
+    'file' => 'includes/commerce_shipping_ui.admin.inc',
+  );
+
+  // Add the menu items for the various Rules forms.
+  $controller = new RulesUIController();
+  $items += $controller->config_menu('admin/commerce/config/shipping-methods');
+
+  return $items;
+}

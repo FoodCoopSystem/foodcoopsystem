@@ -1,0 +1,336 @@
+<?php
+/**
+ * @file
+ * Allows to send messages to all members of a role.
+ */
+
+/**
+ * Implements hook_perm().
+ */
+function user_relationship_privatemsg_permission() {
+  return array(
+    'write privatemsg to relationships' => array(
+      'title' => t('Write private messages to relationships'),
+      'description' => t('Users with this permission are allowed to write a private message to all related users.'),
+    ),
+    'view relationship recipients' => array(
+      'title' => t('View relationship recipients'),
+      'description' => t('Users with this permission will be able to see that a message has been sent to a relationship.'),
+    ),
+  );
+}
+
+function user_relationship_privatemsg_theme() {
+  return array(
+    'user_relationship_privatemsg_format' => array(
+      'variables' => array('recipient' => NULL, 'options' => array()),
+    ),
+  );
+}
+
+/**
+ * Implements hook_privatemsg_recipient_types_info().
+ */
+function user_relationship_privatemsg_privatemsg_recipient_type_info() {
+  $types = user_relationships_types_load();
+
+  // If there is no relationship defined, don't expose it as a recipient type.
+  if (empty($types)) {
+    return;
+  }
+
+  return array(
+    'user_relationship' => array(
+      'name' => t('User relationship'),
+      'description' => t('Enter the name of a user relationship to write a message to all related users. Example: %example.', array('%example' => reset($types)->plural_name)),
+      'format' => 'user_relationship_privatemsg_format',
+      'load' => 'user_relationship_privatemsg_load_multiple',
+      'autocomplete' => 'user_relationship_privatemsg_autocomplete',
+      'generate recipients' => 'user_relationship_privatemsg_load_recipients',
+      'count' => 'user_relationship_privatemsg_count_recipients',
+      'write callback' => 'user_relationship_privatemsg_check_write_access',
+      'view access' => 'view relationship recipients',
+    ),
+  );
+}
+
+function user_relationship_privatemsg_check_write_access($relationship = NULL) {
+  global $user;
+  // Users are only allowed to write their own related users.
+  if ($relationship) {
+    if (!isset($relationship->account)) {
+      $author = db_query('SELECT author FROM {user_relationship_privatemsg} WHERE urpid = :urpid', array(':urpid' => $relationship->recipient))->fetchField();
+      $relationship->account = user_load($author);
+    }
+    if ($relationship->account->uid != $user->uid) {
+      return FALSE;
+    }
+  }
+  return user_access('write privatemsg to relationships');
+}
+
+/**
+ * Format a relationship for displaying as recipient.
+ */
+function theme_user_relationship_privatemsg_format($variables) {
+  global $user;
+  $relationship = $variables['recipient'];
+  $options = $variables['options'];
+
+  if (!empty($options['plain'])) {
+    return $relationship->plural_name;
+  }
+
+  if ($relationship->account->uid == $user->uid) {
+
+    return t('your <a href="@url">%relationship</a>', array('%relationship' => $relationship->plural_name, '@url' => url('relationships/' . $relationship->rtid)));
+  }
+  $name = t('%relationship of @username', array('%relationship' => $relationship->plural_name, '@username' => format_username($relationship->account)));
+  if (user_relationships_ui_check_access(array('user'), $relationship->account)) {
+    return l($name, 'user/' . $relationship->account->uid . '/relationships/' . $relationship->rtid, array('html' => TRUE));
+  }
+  return $name;
+}
+
+/**
+ * Load relationships based on their rtid.
+ */
+function user_relationship_privatemsg_load_multiple($urpids) {
+  $relationships = array();
+  $result = db_query('SELECT * FROM {user_relationship_privatemsg} WHERE urpid IN (:urpids)', array(':urpids' => $urpids));
+  foreach ($result as $row) {
+    if ($relationship = user_relationships_type_load($row->rtid)) {
+      $relationship->type = 'user_relationship';
+      $relationship->recipient = $row->urpid;
+      $relationship->account = user_load($row->author);
+      $relationships[privatemsg_recipient_key($relationship)] = $relationship;
+    }
+  }
+  return $relationships;
+}
+
+/**
+ * Returns the recipient id for a rtid - author combination.
+ */
+function _user_relationship_privatemsg_get_recipient_id($rtid, $uid) {
+  $urpid = db_query('SELECT urpid FROM {user_relationship_privatemsg} WHERE rtid = :rtid AND author = :author', array(':rtid' => $rtid, ':author' => $uid))->fetchField();
+  if ($urpid) {
+    return $urpid;
+  }
+  return db_insert('user_relationship_privatemsg')
+    ->fields(array(
+      'rtid' => $rtid,
+      'author' => $uid,
+    ))
+    ->execute();
+}
+
+/**
+ * Load a number of recipient user ids.
+ */
+function user_relationship_privatemsg_load_recipients($relationship, $limit, $offset) {
+  $recipients = array();
+  $relationships = user_relationships_load(array('user' => $relationship->account->uid, 'rtid' => $relationship->rtid), array('limit' => $limit, 'offset' => $offset));
+  foreach ($relationships as $row) {
+    if ($row->requester_id == $relationship->account->uid) {
+      $recipients[] = $row->requestee_id;
+    }
+    else {
+      $recipients[] = $row->requester_id;
+    }
+  }
+  return $recipients;
+}
+
+/**
+ * Return the number of users to which the author is related.
+ */
+function user_relationship_privatemsg_count_recipients($relationship) {
+  return user_relationships_load(array('user' => $relationship->account->uid, 'rtid' => $relationship->rtid), array('count' => TRUE));
+}
+
+/**
+ * Return relationship autocomplete suggestions.
+ */
+function user_relationship_privatemsg_autocomplete($search, $names, $limit) {
+  global $user;
+  $matches = array();
+  $types = user_relationships_types_load();
+  foreach ($types as $type) {
+    // Only look for relationship types which start with $search but search
+    // case insensitive.
+    if (stripos($type->plural_name, $search) === 0 && !in_array($type->plural_name, $names)) {
+      $type->type = 'user_relationship';
+      $type->recipient = _user_relationship_privatemsg_get_recipient_id($type->rtid, $user->uid);
+      $type->account = $user;
+      $matches[privatemsg_recipient_key($type)] = $type;
+      if (count($matches) >= $limit) {
+        break;
+      }
+    }
+  }
+  return $matches;
+}
+
+/**
+ * Implements hook_privatemsg_name_lookup().
+ */
+function user_relationship_privatemsg_privatemsg_name_lookup($string) {
+  global $user;
+  $relationship = str_replace(t('[user_relationship]'), '', $string);
+  if ($recipient = user_relationships_type_load(array('plural_name' => $relationship))) {
+    $recipient->type = 'user_relationship';
+    $recipient->recipient = _user_relationship_privatemsg_get_recipient_id($recipient->rtid, $user->uid);
+    $recipient->account = $user;
+    return array(privatemsg_recipient_key($recipient) => $recipient);
+  }
+}
+
+/**
+ * Implements hook_query_privatemsg_autocomplete_alter().
+ */
+function user_relationship_privatemsg_query_privatemsg_autocomplete_alter($query) {
+  global $user;
+  // Check if $author needs to be restricted.
+  if (!variable_get('user_relationships_privatemsg_autocomplete_alter', 0) || !user_relationship_privatemsg_restrict($user, FALSE)) {
+    return;
+  }
+
+  $query->innerJoin('user_relationships', 'ur', 'u.uid = ur.requestee_id');
+  $query
+    ->condition('ur.approved', 1)
+    ->condition('ur.requester_id', $user->uid);
+}
+
+
+/**
+ * Implements hook_privatemsg_block_message().
+ */
+function user_relationship_privatemsg_privatemsg_block_message($author, $recipients) {
+  // Check if $author needs to be restricted.
+  if (!user_relationship_privatemsg_restrict($author)) {
+    return;
+  }
+
+  $blocked = array();
+  foreach ($recipients as $recipient) {
+    if (isset($recipient->type) && $recipient->type != 'user' && $recipient->type != 'hidden') {
+      continue;
+    }
+
+    // Don't block if the user is writing himself.
+    if ($author->uid == $recipient->uid) {
+      continue;
+    }
+
+    //block if user is only receiving pm's from his relationships, and author is not one of them
+    $user_setting = isset($recipient->data['user_relationships_allow_private_message']) ? $recipient->data['user_relationships_allow_private_message'] : 'on all users';
+    $setting = variable_get('user_relationships_restrict_privatemsg', 'all');
+    if ($setting == 'relationships' || ($setting == 'all_overridable' && $user_setting == 'on in relations')) {
+      // Check if author is related.
+      $relations = user_relationships_load(array('between' => array($author->uid, $recipient->uid)));
+      if (empty($relations)) {
+        $blocked[] = array(
+          'recipient' => privatemsg_recipient_key($recipient),
+          'message' => t('!name does not have an established relationship with you.', array('!name' => privatemsg_recipient_format($recipient))),
+        );
+      }
+    }
+  }
+  return $blocked;
+}
+
+/**
+ * Check if the current user should be restricted.
+ *
+ * @param $author
+ *   User object of the message author.
+ * @param $check_permission
+ *   If TRUE, this only applies if all users are restricted by default.
+ *
+ * @return
+ *   FALSE if the current user should be not be restricted, TRUE otherwise.
+ */
+function user_relationship_privatemsg_restrict($author, $check_permission = TRUE) {
+  //#522078 admin killswitch, always ignore this for user 1.
+  if (($check_permission && variable_get('user_relationships_restrict_privatemsg', 'all') == 'all') || $author->uid == 1) {
+    return FALSE;
+  }
+
+  $exclude_roles = array_filter(variable_get('user_relationships_privatemsg_role_exclusions', array()));
+  // First, make sure that we have a user object with roles, and then check if
+  // the users does have any of the excluded roles.
+  if (!empty($author->roles) || $author = user_load($author->uid)) {
+    $is_excluded = array_intersect(array_keys($author->roles), $exclude_roles);
+    if (!empty($is_excluded)) {
+      return FALSE;
+    }
+  }
+  return TRUE;
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function user_relationship_privatemsg_form_user_relationships_admin_settings_alter(&$form, &$form_state) {
+  $form['privatemsg'] = array(
+    '#type'   => 'fieldset',
+    '#title'  => t('Private Message Integration'),
+    '#description'    => t('Configure integration with the Private Message module. These settings apply to all users except the default admin user.'),
+    '#group' => 'settings',
+  );
+  $form['privatemsg']['user_relationships_restrict_privatemsg'] = array(
+    '#type'           => 'radios',
+    '#title'          => t('Permitted message recipients'),
+    '#default_value'  => variable_get('user_relationships_restrict_privatemsg', 'all'),
+    '#options' => array(
+      'all' => t('Allow sending messages to all users'),
+      'all_overridable' => t('Allow sending messages to all users, but provide users with an option to only receive messages from their confirmed relationships.'),
+      'relationships' => t('Only allow sending messages between confirmed relationships.'),
+    ),
+  );
+  $form['privatemsg']['user_relationships_privatemsg_autocomplete_alter'] = array(
+    '#type'           => 'checkbox',
+    '#title'          => t('Only suggest confirmed relationships as message recipients'),
+    '#description'    => t('When sending a private message, only display confirmed relationships in the "To" autocomplete field.'),
+    '#default_value'  => variable_get('user_relationships_privatemsg_autocomplete_alter', 0),
+  );
+  $form['privatemsg']['user_relationships_privatemsg_role_exclusions'] = array(
+    '#type' => 'checkboxes',
+    '#options' => user_roles(TRUE),
+    '#default_value' => variable_get('user_relationships_privatemsg_role_exclusions', array()),
+    '#title' => t('Role exceptions'),
+    '#description' => t('Any roles checked below are exempt from the above restrictions and may send private messages to all users.'),
+  );
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function user_relationship_privatemsg_form_alter(&$form, &$form_state, $form_id) {
+  if (($form_id == 'user_register_form' || $form_id == 'user_profile_form') && $form['#user_category'] == 'account') {
+    // #257748 #458046 for adding the functionality of allowing/disallowing
+    // private messages.
+    if (variable_get('user_relationships_restrict_privatemsg', 'all') == 'all_overridable' && user_access('maintain @relationship relationships', $form['#user'])) {
+      $form['privatemsg']['user_relationships_allow_private_message'] = array(
+        '#type' => 'radios',
+        '#title' => t('Allow private messages from...'),
+        '#description' => t('Choose who can send you private messages.'),
+        '#options' => array('on all users' => t('Everyone'), 'on in relations' => t('Only those who have an established relationship with me')),
+        '#default_value' => !empty($form['#user']->data['user_relationships_allow_private_message'])? $form['#user']->data['user_relationships_allow_private_message'] : 'on all users',
+        '#states' => array(
+          'visible' => array(
+            ':input[name="pm_enable"]' => array('checked' => TRUE),
+          ),
+        ),
+      );
+    }
+  }
+}
+
+/**
+ * Implements hook_user_presave().
+ */
+function user_relationship_privatemsg_user_presave(&$edit, $account, $category) {
+  $edit['data']['user_relationships_allow_private_message'] = isset($edit['user_relationships_allow_private_message']) ? $edit['user_relationships_allow_private_message'] : 'on all users';
+}

@@ -1,0 +1,344 @@
+<?php
+
+/**
+ * @file
+ * A module which creates javascript timed dhtml things.
+ */
+
+module_load_include('inc', 'jstimer', '/jstimer.field');
+
+// constants
+define('DEFAULT_JS_LOAD', '0');
+
+
+/**
+ * Implementation of hook_help().
+ */
+function jstimer_help($path, $arg) {
+  switch ($path) {
+    case 'admin/modules#description':
+      return t('A module which creates javascript timers.');
+    case 'admin/help#jstimer':
+    $output = <<<HELP_TXT
+<p>Please look at the readme.txt file that comes with this module.  It really has a lot of great information.</p>
+<p>The javascript timer module provides an api to allow you to make dhtml widgets which are updated every second.
+There are some good examples for node and block usage in the readme.txt file.
+Please look at it.</p>
+HELP_TXT;
+      $output .= '<p>Usage Example for a Node<br/>&lt;span class="jstimer"&gt;Count Up to 11:30<br/>&lt;span style="display:none" class="datetime"&gt;2007-02-26T09:30:00&lt;/span&gt;<br/>&lt;span style="display:none"<br/>';
+      $output .= '&lt;span style="display:none" class="dir"&gt;up&lt;/span&gt;<br/>&lt;/span&gt;</p>';
+      return ($output);
+  }
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function jstimer_theme($existing, $type, $theme, $path) {
+
+  $themes = array(
+    'jstimer' => array(
+      'variables' => array('widget_name' => NULL, 'widget_args' => NULL)
+    )
+  );
+
+  return $themes;
+}
+
+
+function theme_jstimer($variables) {
+	$widget_name = $variables['widget_name'];
+	$widget_args = $variables['widget_args'];
+
+  $widgets = jstimer_get_widgets();
+  $widget = NULL;
+  foreach ($widgets as $w) {
+    if ( $widget_name == $w->name ) {
+      $widget = $w;
+      break;
+    }
+  }
+
+  if ( !isset($widget) ) {
+    return "Widget $widget_name not found.";
+  }
+
+  if ( function_exists($widget->theme_function) ) {
+    return call_user_func($widget->theme_function, $widget_args);
+  }
+  else {
+    return "Widget $widget_name theme not found.";
+  }
+}
+
+
+/**
+ * Implementation of hook_menu
+ */
+function jstimer_menu() {
+  $items = array();
+
+  $items['admin/config/system/jstimer'] = array(
+    'title' => 'Javascript timer',
+    'description' => 'Configure Javascript timer widgets and settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('jstimer_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'jstimer.admin.inc',
+  );
+
+  return $items;
+}
+
+
+/**
+ * Implementation of hook_init
+*/
+function jstimer_init() {
+  drupal_add_js(variable_get('jstimer_timerjs_path', ''), 'file');
+}
+
+
+/**
+ * Determine whether or not to to add javascript.
+ *
+ * @return boolean
+ *   TRUE if the javascript should be added, FALSE otherwise.
+*/
+function jstimer_load_js() {
+
+  $js_load_option = variable_get('jstimer_js_load_option', DEFAULT_JS_LOAD);
+  if ( $js_load_option == 1 ) {
+    //every page
+    return TRUE;
+  }
+  else if ($js_load_option == 2 || $js_load_option == 0) {
+    if ($js_load_option == 0) {
+      // all nodes
+      $pages = 'node/*';
+      $exclude = '';
+    }
+    else {
+      // page list
+      $pages = variable_get('jstimer_js_load_pages', '');
+      $exclude = variable_get('jstimer_js_exclude_pages', '');
+    }
+    $path = drupal_get_path_alias($_GET['q']);
+
+    if ($exclude) {
+      $regexp = '/^('. preg_replace(array('/(\r\n?|\n)/', '/\\\\\*/', '/(^|\|)\\\\<front\\\\>($|\|)/'), array('|', '.*', '\1'. preg_quote(variable_get('site_frontpage', 'node'), '/') .'\2'), preg_quote($exclude, '/')) .')$/';
+      $page_match = preg_match($regexp, $path);
+
+      if ($path != $_GET['q']) {
+        $page_match = $page_match || preg_match($regexp, $_GET['q']);
+      }
+      if ($page_match) return 0;
+    }
+
+    $regexp = '/^('. preg_replace(array('/(\r\n?|\n)/', '/\\\\\*/', '/(^|\|)\\\\<front\\\\>($|\|)/'), array('|', '.*', '\1'. preg_quote(variable_get('site_frontpage', 'node'), '/') .'\2'), preg_quote($pages, '/')) .')$/';
+    // Compare with the internal and path alias (if any).
+    $page_match = preg_match($regexp, $path);
+
+    if ($path != $_GET['q']) {
+      $page_match = $page_match || preg_match($regexp, $_GET['q']);
+    }
+    return $page_match == 1;
+  }
+}
+
+
+/**
+ * scrub the format strings for things that make bad javascript.
+ *
+ * @param $format_string
+ *   String which needs to be cleaned.
+ * @return string
+ *   cleaned string which does not contain newlines, carrage returns, or single quotes.
+ */
+function jstimer_clean_for_javascript($format_string='') {
+  $patterns =      array('/\n/', '/\r/', '/\'/');
+  $replacements = array('<br/>', '', '"' );
+  return preg_replace($patterns, $replacements, $format_string);
+}
+
+
+/**
+ * create the timer.js file and put it in the files/jstimer directory.
+ *
+ * @return string
+ *   The full path of the file.
+ */
+function jstimer_build_js_cache() {
+
+  // Create the files/jstimer
+  $path = 'public://jstimer';
+  file_prepare_directory($path, FILE_CREATE_DIRECTORY);
+  $data = jstimer_get_javascript(TRUE);
+  file_save_data($data, $path .'/timer.js', FILE_EXISTS_REPLACE);
+  drupal_set_message(t('Countdown Timer javascript file saved to: ') . $path .'/timer.js');
+
+  if (!file_exists($path .'/timer.js')) {
+    drupal_set_message(t('File Create Error: timer.js could not be created'), 'error');
+  }
+  else {
+    variable_set('jstimer_timerjs_path', $path .'/timer.js');
+  }
+  return $path .'/timer.js';
+}
+
+
+/**
+ * Get the list of active widgets.
+ *
+ * @return Array
+ *   The array of stdClass objects.
+ */
+function jstimer_get_widgets($reset = FALSE) {
+  static $widgets;
+
+  if (!isset($widgets) || $reset) {
+    // get all optional widgets
+    $widgets = module_invoke_all('jstwidget');
+  }
+
+  return $widgets;
+}
+
+
+/**
+ * Get the actual javascript code that needs to be written into a file.
+ * This also aggregates any optional javascript bits.
+ *
+ * @return string
+ *   The javascript code.
+ */
+function jstimer_get_javascript($reset = FALSE) {
+
+  // Get all widgets
+  $widget_list = jstimer_get_widgets($reset);
+
+  // Collect implementation js and instantiation js.
+  $active_widgets = Array();
+  $widget_implementation_code = '';
+  foreach ($widget_list as $widget) {
+    $active_widgets[] = "new " . $widget->js_name . "()";
+    $widget_implementation_code .= $widget->js_code;
+  }
+  $active_widgets_instantiation = implode(",\n      ", $active_widgets);
+
+
+  /* Begin Javascript heredoc.
+   * This is not indented so javascript is more readable in web browser.
+   * This creates a js file to facilitate caching.
+   */
+
+  $ouput = <<<JAVASCRIPT_CODE
+
+// bootstrap
+Drupal.behaviors.jstimer = {
+  attach: function(context) {
+    Drupal.jstimer.countdown_auto_attach(
+      new Array(
+        $active_widgets_instantiation
+      )
+    );
+  }
+}
+
+// Namespace for most of the javascript functions.
+Drupal.jstimer = {};
+
+// Array that holds all elements that need to be updated.
+Drupal.jstimer.timer_stack = new Array();
+
+// Attach all active widgets to their respective dom objects.
+Drupal.jstimer.countdown_auto_attach = function (jstimer_active_widgets) {
+
+  // Call .attach() on the active widget items.
+  for (var i=0; i<jstimer_active_widgets.length; i++) {
+    jstimer_active_widgets[i].attach();
+  }
+
+  // If you have any widget items, start the timing loop.
+  if ( Drupal.jstimer.timer_stack.length > 0 ) {
+    Drupal.jstimer.timer_loop();
+  }
+
+}
+
+// The timing loop.
+Drupal.jstimer.timer_loop = function() {
+  // run backwards so we can remove items and not messup the loop data.
+  for (var i = Drupal.jstimer.timer_stack.length - 1; i >= 0; i--) {
+    if ( Drupal.jstimer.timer_stack[i].update() == false ) {
+      Drupal.jstimer.timer_stack.splice(i, 1);
+    }
+  }
+
+  // Stop the timer if there are not more timer items.
+  if ( Drupal.jstimer.timer_stack.length > 0 ) {
+    setTimeout('Drupal.jstimer.timer_loop()',999);
+  }
+}
+
+$widget_implementation_code
+
+
+
+
+// Util functions
+function LZ(x) {
+  return (x >= 10 || x < 0 ? "" : "0") + x;
+}
+
+// iso8601 date parsing routines.  Extends the built-in javascript date object.
+Date.prototype.jstimer_set_iso8601_date = function (string) {
+  var iso8601_re = /^(?:(\d{4})(?:-(\d{2})(?:-(\d{2}))?)?)?(?:[T ](\d{2}):(\d{2})(?::(\d{2})(.\d+)?)?((?:[+-](\d{2}):(\d{2}))|Z)?)?$/;
+  var date_bits = iso8601_re.exec(string);
+  var date_obj = null;
+  if ( date_bits ) {
+    date_bits.shift();
+    date_bits[1] && date_bits[1]--; // normalize month
+    date_bits[6] && (date_bits[6] *= 1000); // convert mils
+    date_obj = new Date(date_bits[0]||1970, date_bits[1]||0, date_bits[2]||0, date_bits[3]||0, date_bits[4]||0, date_bits[5]||0, date_bits[6]||0);
+
+    //timezone handling
+    var zone_offset = 0;  // in minutes
+    var zone_plus_minus = date_bits[7] && date_bits[7].charAt(0);
+    // get offset from isostring time to Z time
+    if ( zone_plus_minus != 'Z' ) {
+      zone_offset = ((date_bits[8] || 0) * 60) + (Number(date_bits[9]) || 0);
+      if ( zone_plus_minus != '-' ) {
+        zone_offset *= -1;
+      }
+    }
+    // convert offset to localtime offset, will include daylight savings
+    if ( zone_plus_minus ) {
+      zone_offset -= date_obj.getTimezoneOffset();
+    }
+    if ( zone_offset ) {
+      date_obj.setTime(date_obj.getTime() + zone_offset * 60000);
+    }
+  }
+
+  // set this object to current localtime representation
+  try {
+    this.setTime(date_obj.getTime());
+  }
+  catch(e) {
+    throw new Object({name:"DatePatternFail",message:"jstimer: Date does not have proper format (ISO8601, see readme.txt)."});
+  }
+}
+Date.prototype.jstimer_get_moy = function () {
+  var myMonths=new Array("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+  return myMonths[this.getMonth()];
+}
+Date.prototype.jstimer_get_dow = function () {
+  var myDays=["Sun","Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+  return myDays[this.getDay()];
+}
+
+JAVASCRIPT_CODE;
+
+  return $ouput;
+}

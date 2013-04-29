@@ -1,0 +1,136 @@
+<?php
+/**
+ * @file
+ *   Allows views to be embedded in webforms and used as submission data sources.
+ *
+ *
+ * This does NOT save all that data in a fully webform-compatible way for
+ * reports, it just allows elements that were added on the fly to be processed
+ * as data for emails. Data is not available for later reporting.
+ *
+ * USAGE.
+ *
+ * Add a field 'can order' as a boolean flag on nodes that can be ordered.
+ *
+ * Set its 'display' to be 'webform placeholder'
+ *
+ * Make a view for the nodes you want to show on a webform.
+ * This view should display the 'webform placeholder' field.
+ *
+ * Edit the webform and add this view as a webform field.
+ *
+ * The placeholder on each node in the view will be replaced with a webform
+ * submission field.
+ *
+ */
+
+/**
+ * Declare our new component type for webform - an embedded view.
+ *
+ * Implements hook_webform_component_info().
+ */
+function webform_view_webform_component_info() {
+  $component_info = array(
+    'view' => array(
+      'label' => t('Embedded view'),
+      'description' => t('Allows a view to be embedded and each row in the view to be a selectable option.'),
+      'file' => 'webform_view.inc',
+      'features' => array(
+        'default_value' => FALSE,
+        // Support nested fields here
+        'group' => TRUE,
+      ),
+    ),
+  );
+
+  return $component_info;
+}
+
+/**
+ * Declare our custom theme - used to catch the rendering of an embedded view at the end.
+ *
+ * hook_theme()
+ */
+function webform_view_theme() {
+  return array(
+    'webform_view_embedded' => array(
+      'render element' => 'element',
+    ),
+  );
+}
+
+
+/**
+ * hook_form_alter()
+ *
+ */
+function webform_view_form_alter(&$form, $form_state, $form_id) {
+  if (substr($form_id, 0, 19) != 'webform_client_form') {
+    return;
+  }
+  // Find form_key from cid.
+  $form_key = array();
+  $settings = variable_get('webform_view_' . $form['#node']->nid, array());
+  foreach ($settings as $cid => $enabled) {
+    if (is_int($cid) && $enabled) {
+      $form_key[] = 'webform-component-' . $form['#node']->webform['components'][$cid]['form_key'];
+    }
+  }
+
+  #dpm(get_defined_vars());
+
+}
+
+/**
+ * By declaring an alternative field formatter - to be used in place of the
+ * 'can order' flag, we can insert form elements into the view display
+ * and therefore into the webform.
+ *
+ * Field used on the content type must be a Boolean.
+ * If so, then we can replace that item with a custom display renderer.
+ */
+function webform_view_field_formatter_info() {
+  return array(
+    'webform_view_placeholder' => array(
+      'label' => t('A webform placeholder'),
+      'field types' => array('list_boolean'),
+    ),
+  );
+}
+
+/**
+ * Insert a PLACEHOLDER value as the text rendering of an item.
+ * The webform postprocess should replace this placeholder with the form element
+ * @see theme_webform_view_embedded()
+ *
+ * Implements hook_field_formatter_view().
+ */
+function webform_view_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $element = array();
+
+  switch ($display['type']) {
+    case 'webform_view_placeholder':
+      foreach ($items as $delta => $item) {
+        // Don't even insert the placeholder if there is no value in the trigger
+        // element.
+        if (!empty($item['value'])) {
+          $key = $entity_type == 'node' ? $entity->nid : $entity->id;
+          $replace_pattern = "[webform_view_" . $key . "_placeholder]";
+          $element[$delta] = array(
+            '#type' => 'markup',
+            '#markup' => $replace_pattern,
+          );
+        }
+        else {
+          // Cannot order, return empty string.
+          $element[$delta] = array(
+            '#type' => 'markup',
+            '#markup' => '',
+          );
+        }
+      }
+      break;
+  }
+  return $element;
+}
+

@@ -1,0 +1,1642 @@
+/* @group Basic Typography
+-------------------------------------------------------------- */
+
+/* Add general site styling here for typography and background */
+
+body {
+  font-size: 75%;
+}
+
+h1 {
+  border-bottom: 1px solid #D6DDB9;
+  clear: left;
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 183.3%; /* 22px/12px */
+  font-weight: bold;
+  line-height: 120%;
+  margin-bottom: 5px;
+}
+
+h2 {
+  border-bottom: 1px solid #d6ddb9;
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 133.3%; /* 16px/12px */
+  font-weight: 600;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+h2 a:hover,
+h2 a:focus,
+h2 a:active {
+  color: #619CBE;
+  text-decoration: none;
+}
+
+h3 {
+  
+}
+
+h4 {
+  
+}
+
+/* Default link styles - separate a:visited for a different visited 
+link style */
+
+a,
+a:link,
+a:visited {
+  color: #27638C;
+}
+
+/* Hover/active link styles. Don't forget :focus for accessibility */
+
+a:hover,
+a:focus,
+a:active {
+  text-decoration: underline;
+}
+
+/* Lists */
+
+ul {
+  margin: 0 0 10px 20px;
+}
+
+ul.menu,
+ul.item-list,
+ul.pager,
+ul.links {
+  margin-left: 0;
+}
+
+ol {
+  margin: 0 0 10px 40px;
+}
+
+ul ul,
+ol ol {
+  margin: 5px 0 5px 10px;
+}
+
+ul li {
+  background: url(/skins/acquia_marina_default/images/green-bullet.png) no-repeat 0 2px;
+  list-style: none;
+  list-style-image: none;
+  margin-bottom: 5px;
+  padding: 0 0 0 15px;
+}
+
+blockquote p {
+  font-style: italic;
+  margin: 0;
+  padding: 8px 20px;
+}
+
+blockquote {
+  background: url(/skins/acquia_marina_default/images/close-quote.png) no-repeat 100% 100%; /* LTR */
+  color: #5A6A78;
+  margin: 10px 0;
+}
+
+blockquote p:first-child {
+  background: url(/skins/acquia_marina_default/images/open-quote.png) no-repeat 0 100%;  /* LTR */
+  padding: 0 0 0 20px;/* LTR */
+}
+
+blockquote * > :first-child {
+  background: transparent;
+  padding: 0;
+}
+
+blockquote a:link {
+  text-decoration: underline;
+}
+
+hr {
+  border: 1px solid #D6DDB9;
+}
+
+/* @end basic typography*/
+
+/* @group Layout elements & regions */
+
+html {
+  background: #F4F7E7;
+  color: #666;
+}
+
+.page-inner {
+  border: 0;
+  margin-bottom: 0;
+  padding: 0;
+}
+
+/* @group Blocks, panels & all regions
+/-------------------------------------------------------------- */
+
+.ie7 .block {
+  position: relative;
+}
+
+/* @end all regions*/
+
+/* @group Header top region
+/-------------------------------------------------------------- */
+
+#header-group-wrapper {
+  background: #fff;
+}
+
+#header-top-wrapper {
+  background: #e1e1e1;
+  border-bottom: 1px solid #ccc;
+}
+
+/* @end header top*/
+
+/* @group Site info & header
+/-------------------------------------------------------------- */
+
+/* Wrapper around logo, site name, and slogan */
+
+.header-site-info {
+  margin-bottom: 0;
+  float: left;
+}
+
+#logo {
+  float: left;
+  margin: 0 15px 0 0;
+}
+
+#site-name-wrapper {
+  float: left;
+}
+
+#site-name {
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 300%;
+  line-height: 125%;
+  font-weight: normal;
+  border: none;
+}
+
+/* Typography for site slogan */
+
+#slogan {
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 116.7%; /* 14px/12px */
+  margin-top: -5px;
+}
+
+#header-group-inner {
+  padding: 20px 0;
+}
+
+/* @end site info & header*/
+
+/* @group Main menu region
+/-------------------------------------------------------------- */
+
+.main-menu-wrapper {
+  background-color: #fff;
+}
+
+/* @end main menu*/
+
+/* @group Preface regions
+/-------------------------------------------------------------- */
+
+/*  Preface Regions
+-------------------------------------------------------------- */
+
+.preface-top-outer {
+  -moz-background-clip: border;
+  -moz-background-origin: padding;
+  -moz-background-size: auto auto;
+  border-top: 3px solid #a7ce38;
+  background-color: #2f76a5; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left top, left bottom, 
+	from(#2f76a5),
+	to(#144a6e)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* firefox */
+  color: #FFFFFF;
+  min-height: 24px;
+  padding-top: 30px;
+}
+
+/* all IEs */
+.ie .preface-top-outer {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#2f76a5, 
+	endColorstr=#144a6e,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 .preface-top-outer {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#2f76a5, 
+	endColorstr=#144a6e,
+	GradientType=0
+  );
+}
+
+.ie6 .preface-top-outer {
+  height: 24px; /* Set heights rather than min-height as IE6 doesn't understand min-height */
+}
+
+.preface-top a:link,
+.preface-top a:visited {
+  color: #fff;
+  text-decoration: underline;
+}
+
+/* @end preface regions*/
+
+/* @group Sidebar regions
+/-------------------------------------------------------------- */
+
+/* @end sidebar regions*/
+
+/* @group Content regions
+/-------------------------------------------------------------- */
+
+#content-content .inner {
+  margin-top: 0;
+}
+
+/* Main Area (content + sidebars + preface bottom + postscript top)
+-------------------------------------------------------------- */
+
+.main-wrapper {
+  background-color: #E4EDC2; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#E4EDC2 0%, 
+	#F5F7E7 55px
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#E4EDC2 0%, 
+	#F5F7E7 55px
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left top, left bottom,
+	from(#E4EDC2),
+	to(#F5F7E7), 
+	color-stop(0%, #E4EDC2),
+	color-stop(10%, #F5F7E7)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#E4EDC2 0%, 
+	#F5F7E7 55px
+  ); /* firefox */
+  border-top: 2px solid #FFFFFF;
+  padding-top: 40px;
+}
+
+/* all IEs */
+.ie .main-wrapper {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#E4EDC2, 
+	endColorstr=#F5F7E7,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 .main-wrapper {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#E4EDC2, 
+	endColorstr=#F5F7E7,
+	GradientType=0
+  );
+}
+
+/* @end content regions*/
+
+/* @group Postscript regions
+/-------------------------------------------------------------- */
+
+/*  Postscript & Footer Regions
+-------------------------------------------------------------- */
+
+.postscript-bottom-wrapper {
+  border-top: 3px solid #a7ce38;
+  background-color: #2f76a5; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left top, left bottom, 
+	from(#2f76a5),
+	to(#144a6e)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#2f76a5 0%, 
+	#144a6e 100%
+  ); /* firefox */
+  color: #FFFFFF;
+  min-height: 24px;
+  padding: 20px 0;
+}
+
+/* all IEs */
+.ie .postscript-bottom-wrapper {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#2f76a5, 
+	endColorstr=#144a6e,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 .postscript-bottom-wrapper {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#2f76a5, 
+	endColorstr=#144a6e,
+	GradientType=0
+  );
+}
+
+.postscript-bottom-wrapper {
+  height: 24px; /* Set heights rather than min-height as IE6 doesn't understand min-height */
+}
+
+.postscript-bottom-wrapper a:link,
+.postscript-bottom-wrapper a:visited {
+  color: #fff;
+  text-decoration: underline;
+}
+
+
+/* @end postscript regions*/
+
+/* @group Footer
+/-------------------------------------------------------------- */
+
+.footer-message {
+  border-top: 1px solid #D6DDB9;
+  font-size: 91.7%; /* 11px/12px */
+  padding: 10px 0;
+  text-align: center;
+}
+
+/* @end footer*/
+
+.ie6 .grid-type-fluid #header-top,
+.ie6 .grid-type-fluid #header-group,
+.ie6 .grid-type-fluid #preface-top,
+.ie6 .grid-type-fluid #page-inner {
+  margin: 0 auto;
+  width: expression((document.body.clientWidth > 1141)? "1140px" : "auto");
+  max-width: 1140px;
+}
+
+/* @end layout elements & regions */
+
+/* @group Common elements
+/-------------------------------------------------------------- */
+
+/* @group Breadcrumbs
+/-------------------------------------------------------------- */
+
+/*@end Breadcrumbs*/
+
+/* @group Content tabs
+/-------------------------------------------------------------- */
+
+#content-tabs {
+  background-color: transparent;
+  float: left;
+  margin: 20px 0;
+  padding: 0;
+}
+
+#content-tabs ul.primary,
+#content-tabs ul.secondary {
+  border-bottom: 1px solid #bbb;
+  clear: both;
+  float: left;
+  margin: 0;
+  padding: 0 10px;
+}
+
+#content-tabs ul.secondary {
+  border-bottom: 1px solid #555;
+  margin-top: 10px;
+  text-transform: lowercase;
+}
+
+#content-tabs ul.primary li,
+#content-tabs ul.secondary li {
+  border-style: none;
+  display: inline;
+  float: left;
+  list-style: none;
+  margin: 0 10px;
+  padding: 0;
+}
+
+#content-tabs ul.primary li a:link,
+#content-tabs ul.primary li a:visited,
+#content-tabs ul.secondary li a:link,
+#content-tabs ul.secondary li a:visited {
+  background-color: transparent;
+  border: none;
+  color: #000;
+  float: left;
+  font-weight: bold;
+  margin: 0;
+  padding: 0 0 6px 0;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+#content-tabs ul.primary li a:link,
+#content-tabs ul.primary li a:visited {
+  color: #27638C;
+  font-size: 108.3%; /* 13px/12px */
+  text-transform: uppercase;
+}
+
+#content-tabs ul.secondary li a:link,
+#content-tabs ul.secondary li a:visited {
+  color: #555;
+}
+
+#content-tabs ul.primary li a.active:link,
+#content-tabs ul.primary li a.active:visited {
+  border-bottom: 4px solid #94CE18;
+  color: #4A95C8;
+  padding-bottom: 2px;
+}
+
+#content-tabs ul.secondary li a.active:link,
+#content-tabs ul.secondary li a.active:visited {
+  border-bottom: 4px solid #555;
+  color: #777;
+  padding-bottom: 2px;
+}
+
+#content-tabs ul.primary li a:hover,
+#content-tabs ul.primary li a:focus,
+#content-tabs ul.secondary li a:hover,
+#content-tabs ul.secondary li a:focus {
+  border-bottom: 4px solid #777;
+  color: #777;
+  padding-bottom: 2px;
+}
+
+#content-tabs ul.primary li a:hover,
+#content-tabs ul.primary li a:focus {
+  border-bottom: 4px solid #94CE18;
+  color: #4A95C8;
+}
+
+/* @end tabs*/
+
+/* @group Forms
+/-------------------------------------------------------------- */
+
+form input.form-submit {
+  background-color: #286e9b; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#4186b5 0%, 
+	#286e9b 50%,
+  #4186b5 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#4186b5 0%, 
+	#286e9b 50%,
+	#4186b5 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left bottom, left top, 
+	from(#4186b5),
+	to(#4186b5), 
+	color-stop(50%, 286e9b)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#4186b5 0%, 
+	#286e9b 50%,
+	#4186b5 100%
+  ); /* firefox */
+  border: 1px solid #fff;
+  color: #fff;
+  cursor: pointer;
+  font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+  font-size: 100%;  /* 12px/12px */
+  font-weight: bold;
+  margin: 0 4px;
+  padding: 2px 4px;
+  text-transform: uppercase;
+  outline: 1px solid #9BABB0;
+  border-radius: 4px;
+  -moz-border-radius: 4px;
+  -moz-outline-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+/* all IEs */
+.ie form input.form-submit {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#286e9b, 
+	endColorstr=#4186b5,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 form input.form-submit {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#286e9b, 
+	endColorstr=#4186b5,
+	GradientType=0
+  );
+}
+
+/* Hover style for form buttons */
+
+form input.form-submit:hover,
+form input.form-submit.hover,
+form input.form-submit:focus {
+  background-color: #4186b5; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#286e9b 0%, 
+	#4186b5 50%,
+    #286e9b 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#286e9b 0%, 
+	#4186b5 50%,
+	#286e9b 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left bottom, left top, 
+	from(#286e9b),
+	to(#286e9b), 
+	color-stop(50%, 4186b5)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#286e9b 0%, 
+	#4186b5 50%,
+	#286e9b 100%
+  ); /* firefox */  
+  cursor: pointer;
+}
+
+/* all IEs */
+.ie form input.form-submit:hover,
+.ie form input.form-submit.hover,
+.ie form input.form-submit:focus {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#4186b5, 
+	endColorstr=#286e9b,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 form input.form-submit:hover,
+.ie8 form input.form-submit.hover,
+.ie8 form input.form-submit:focus {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#4186b5, 
+	endColorstr=#286e9b,
+	GradientType=0
+  );
+}
+
+
+/* Typography, background, borders, padding for form fields */
+
+.form-item input,
+.form-item select,
+.form-item textarea {
+  background-color: #f4f8fb; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#f4f8fb 0%, 
+	#fafcfb 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#f4f8fb 0%, 
+	#fafcfb 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left top, left bottom, 
+	from(#f4f8fb),
+	to(#fafcfb)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#f4f8fb 0%, 
+	#fafcfb 100%
+  ); /* firefox */
+  border: 1px solid #9BABB0;
+  color: #666;
+  padding: 2px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+/* all IEs */
+.ie .form-item input,
+.ie .form-item select,
+.ie .form-item textarea {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#f4f8fb, 
+	endColorstr=#fafcfb,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 .form-item input,
+.ie8 .form-item select,
+.ie8 .form-item textarea {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#f4f8fb, 
+	endColorstr=#fafcfb,
+	GradientType=0
+  );
+}
+
+/* Remove backgrounds and border on radios and checkboxes */
+
+.form-item .form-radio,
+.form-item .form-checkbox {
+  background: none;
+  border: none !important;
+}
+
+/* Fieldset wrapper around groups of form elements -- add border here */
+
+fieldset {
+  border: 1px solid #D6DDB9;
+  margin: 15px 0;
+  padding: 10px;
+}
+
+/* Typography and spacing for legend of fieldsets */
+
+fieldset legend {
+  font-weight: bold;
+}
+
+/* Link style for legend of fieldsets */
+
+fieldset legend,
+legend.collapse-processed,
+legend.collapse-processed a:link,
+legend.collapse-processed a:visited {
+  font-weight: bold;
+}
+
+/* @end forms*/
+
+/* @group Maintenance page
+/-------------------------------------------------------------- */
+
+/* @end maintenance page*/
+
+/* @group Menus
+/-------------------------------------------------------------- */
+
+/* This theme includes default styling for the following menus:  
+  - Any menu in the Main Menu region  
+  - Any menu in a sidebar region  
+  - Horizontal and Vertical Superfish menus in any region    
+    - Works best with "none" style in Superfish options    
+    - See http://www.drupal.org/project/superfish for set-up instructions*/
+
+.main-menu h2.block-title {
+  border: none;
+  margin: 0;
+}
+
+.main-menu .block-menu,
+.main-menu .block-superfish {
+  margin-bottom: 0;
+}
+
+/* @group resets */
+
+.sidebar ul.menu,
+ul.sf-vertical,
+ul.sf-vertical li ul {
+  background-color: transparent;
+  border: none;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+
+ul.sf-vertical li a:link,
+ul.sf-vertical li a:visited,
+ul.sf-vertical li .nolink {
+  margin: 0;
+}
+
+ul.menu li {
+  background-image: none;
+  list-style-image: none;
+  list-style: none;
+  text-indent: 0;
+}
+
+ul.sf-vertical li,
+ul.sf-horizontal li {
+  border: none;
+}
+
+.block-superfish ul.sf-menu:after {
+  clear: both;
+  content: ".";
+  display: block;
+  height: 0;
+  visibility: hidden;
+}
+
+/* @end */
+
+/* @group  Typography */
+
+.main-menu ul.menu,
+.block-superfish ul.sf-menu {
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 100%; /* 12px/12px */
+  font-weight: bold;
+  margin: 0;
+  text-transform: uppercase;
+  width: auto;
+}
+
+/* @end typography */
+
+/* @group Top level styling */
+
+.main-menu .fusion-right ul.menu,
+.block-superfish.fusion-right ul.sf-menu {
+  float: right;
+}
+
+.main-menu ul.menu li,
+.block-superfish ul.sf-horizontal li {
+  background: transparent;
+  display: block;
+  float: left;
+  margin: 0 4px 0 0;
+  padding: 0;
+  position: relative;
+}
+
+.block-superfish ul.sf-horizontal li.last,
+.block-superfish ul.sf-horizontal li.active-trail.last,
+.main-menu ul.menu li.last {
+  margin-right: 0;
+}
+
+.block-superfish ul.sf-horizontal li a:link,
+.block-superfish ul.sf-horizontal li a:visited,
+.main-menu ul.menu li a:link,
+.main-menu ul.menu li a:visited,
+.main-menu ul.menu li .nolink {
+  background-color: #e1e1e1;
+  border: none;
+  color: #154B70;
+  display: block;
+  padding: 5px 10px 1px 10px;
+  text-decoration: none;
+  border-radius: 5px 5px 0 0;
+  -moz-border-radius: 5px 5px 0 0;
+  -webkit-border-radius: 5px 5px 0 0;
+}
+
+.block-superfish ul.sf-horizontal li a:hover,
+.block-superfish ul.sf-horizontal li a:focus,
+.block-superfish ul.sf-horizontal li.sfHover > a:link,
+.block-superfish ul.sf-horizontal li.sfHover > a:visited,
+.block-superfish ul.sf-horizontal li.active-trail > a:link,
+.block-superfish ul.sf-horizontal li.active-trail > a:visited,
+.main-menu ul.menu li a:hover,
+.main-menu ul.menu li a:focus,
+.main-menu ul.menu li.active-trail a:link,
+.main-menu ul.menu li.active-trail a:visited {
+  background-color: #b5ee48; /* old browsers */
+  background-image: linear-gradient(
+	top, 
+	#b5ee48 0%, 
+	#95cf1a 40%,
+	#95cf1a 100%
+  ); /* w3c */
+  background-image: -o-linear-gradient(
+	top, 
+	#b5ee48 0%,
+	#95cf1a 40%, 
+	#95cf1a 100%
+  ); /* opera */
+  background-image: -webkit-gradient(
+	linear, left top, left bottom, 
+	from(#b5ee48),
+	to(#95cf1a), 
+	color-stop(40%, #95cf1a)
+  );  /* webkit */
+  background-image: -moz-linear-gradient(
+	top, 
+	#b5ee48 0%, 
+	#95cf1a 40%,
+	#95cf1a 100%
+  ); /* firefox */ 
+  color: #fff;
+}
+
+/* all IEs */
+.ie .block-superfish ul.sf-horizontal li a:hover,
+.ie .block-superfish ul.sf-horizontal li a:focus,
+.ie .block-superfish ul.sf-horizontal li.sfHover > a:link,
+.ie .block-superfish ul.sf-horizontal li.sfHover > a:visited,
+.ie .block-superfish ul.sf-horizontal li.active-trail > a:link,
+.ie .block-superfish ul.sf-horizontal li.active-trail > a:visited,
+.ie .main-menu ul.menu li a:hover,
+.ie .main-menu ul.menu li a:focus,
+.ie .main-menu ul.menu li.active-trail a:link,
+.ie .main-menu ul.menu li.active-trail a:visited {
+  background: none;
+  filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#b5ee48, 
+	endColorstr=#95cf1a,
+	GradientType=0
+  );
+  position: relative; /* Required to enable cleartype in IE when using filter */ 
+  zoom: 1;
+}
+
+/* IE8 */
+.ie8 .block-superfish ul.sf-horizontal li a:hover,
+.ie8 .block-superfish ul.sf-horizontal li a:focus,
+.ie8 .block-superfish ul.sf-horizontal li.sfHover > a:link,
+.ie8 .block-superfish ul.sf-horizontal li.sfHover > a:visited,
+.ie8 .block-superfish ul.sf-horizontal li.active-trail > a:link,
+.ie8 .block-superfish ul.sf-horizontal li.active-trail > a:visited,
+.ie8 .main-menu ul.menu li a:hover,
+.ie8 .main-menu ul.menu li a:focus,
+.ie8 .main-menu ul.menu li.active-trail a:link,
+.ie8 .main-menu ul.menu li.active-trail a:visited {
+  -ms-filter: progid:DXImageTransform.Microsoft.gradient(
+	startColorstr=#b5ee48, 
+	endColorstr=#95cf1a,
+	GradientType=0
+  );
+}
+
+/* @end top level */
+
+/* @group Secondary level styling */
+
+.block-superfish ul.sf-horizontal li ul,
+.block-superfish ul.sf-horizontal li.sfHover ul {
+  background: rgba(146,202,44,.95);
+  font-family: Tahoma, Verdana, Arial, Helvetica, sans-serif;
+  font-size: 91.7%; /* 11px/12px */
+  margin-top: -4px;
+  padding: 0 0 4px 0;
+  position: absolute;
+  text-align: left;
+  text-transform: none;
+  z-index: 2;
+  filter: alpha(opacity=95);
+  border-radius: 0 0 5px 5px;
+  -moz-border-radius: 0 0 5px 5px;
+  -webkit-border-radius: 0 0 5px 5px;
+}
+
+.ie7 .block-superfish ul.sf-horizontal li ul,
+.ie7 .block-superfish ul.sf-horizontal li:hover ul {
+  margin-top: 0;
+}
+
+.block-superfish ul.sf-horizontal li ul li {
+  background: #98D022;
+  border-bottom: 1px solid #83A638;
+  padding-left: 0;
+}
+
+.block-superfish ul.sf-horizontal li ul li.last {
+  border-bottom: 0;
+}
+
+.block-superfish ul.sf-horizontal li ul li a:link,
+.block-superfish ul.sf-horizontal li ul li a:visited,
+.block-superfish ul.sf-horizontal li.active-trail ul li a:link,
+.block-superfish ul.sf-horizontal li.active-trail ul li a:visited {
+  background: #98D022;
+  color: #154B6F;
+  padding-left: 10px;
+  border-radius: 0;
+  -moz-border-radius: 0;
+  -webkit-border-radius: 0;
+}
+
+.block-superfish ul.sf-horizontal li ul li a:hover,
+.block-superfish ul.sf-horizontal li ul li a:focus,
+.block-superfish ul.sf-horizontal li.active-trail ul li a:hover,
+.block-superfish ul.sf-horizontal li.active-trail ul li a:focus {
+  color: #fff;
+}
+
+.block-superfish ul.sf-horizontal li ul li a.active {
+  text-decoration: underline;
+}
+
+/* @end secondary level */
+
+/* @group Third level */
+
+.block-superfish ul.sf-horizontal li ul li ul {
+  font-size: 100% !important; /* 11px/12px */
+  margin-top: 0 !important;
+}
+
+/* @end thrid level */
+
+/* @group Superfish auto-arrows */
+
+/*@end superfish auto-arrows */
+
+/* @group Vertical Superfish */
+
+.superfish-vertical {
+  position: relative;
+  z-index: 10;
+}
+
+ul.sf-vertical {
+  background: #fafafa;
+  margin: 0;
+}
+
+ul.sf-vertical li {
+  padding: 0;
+  border-bottom: 1px solid #ccc;
+  line-height: 200%; /* 24px */
+  font-weight: bold;
+  list-style: none;
+  list-style-type: none;
+  list-style-image: none;
+}
+
+ul.sf-vertical li a:link,
+ul.sf-vertical li a:visited,
+ul.sf-vertical li .nolink {
+  margin-left: 10px;
+  padding: 2px;
+}
+
+ul.sf-vertical li a:hover,
+ul.sf-vertical li a.active {
+  text-decoration: underline;
+}
+
+ul.sf-vertical li ul {
+  background: #fafafa;
+  border-top: 1px solid #ccc;
+  margin-left: 0;
+}
+
+ul.sf-vertical li ul li.last {
+  border-top: 1px solid #ccc;
+  margin-bottom: -1px;
+  margin-top: -1px;
+}
+
+ul.sf-vertical li ul {
+  border-top: none;
+  padding: 4px 0;
+}
+
+ul.sf-vertical li ul li {
+  border-bottom: none;
+  line-height: 150%; /* 24px */
+}
+
+ul.sf-vertical li ul li.last {
+  border-top: none;
+}
+
+ul.sf-vertical li ul li ul {
+  margin-top: -4px;
+}
+
+/* @end vertical superfish*/
+
+/* @end menus */
+
+/* @group Pagers
+/-------------------------------------------------------------- */
+
+.inner ul.pager {
+  margin-left: 0;
+}
+
+.inner ul.pager li {
+  background: transparent;
+  margin: 0 2px;
+  padding: 0;
+}
+
+.inner ul.pager li a:link,
+.inner ul.pager li a:visited,
+.inner ul.pager li.pager-current {
+  background: #FDFFEF;
+  border-color: #266996;
+  color: #27638C;
+  font-weight: bold;
+  font-size: 108.3%; /* 13px/12px */
+  padding: 5px 10px;
+}
+
+.inner ul.pager li.pager-current {
+  background-color: #D9DBCD;
+  color: #000;
+  display: block-inline;
+  padding: 5px 10px;
+}
+
+.ie6 .inner ul.pager li.pager-current,
+.ie7 .inner ul.pager li.pager-current {
+  margin-right: 2px;
+  padding-right: 3px;
+}
+
+.inner ul.pager li a:hover,
+.inner ul.pager li a:active,
+.inner ul.pager li a:focus {
+  background-color: #EAEFCB;
+  border-color: #266996;
+  color: #27638C;
+}
+
+/* @end Pagers*/
+
+/* @group System messages
+/-------------------------------------------------------------- */
+
+/* Error that appears when a required form field is not filled out */
+
+.form-item input.error,
+.form-item textarea.error,
+.form-item select.error {
+  border: 1px solid #aa1144;
+}
+
+/* Required field */
+
+.marker,
+.form-required {
+  color: #aa1144;
+}
+
+table.update {
+  margin-bottom: 10px;
+}
+
+table.update tr td {
+  padding: 2px;
+}
+
+table.update tr.error td {
+  background-color: #edd9be;
+}
+
+table.update table.version td.version-links ul {
+  margin: 0;
+}
+
+table.update table.version td.version-links ul li {
+  padding: 0 0 0 1em;
+}
+
+table.update tr.ok td {
+  background-color: #e3ecc0;
+}
+
+table.update tr.warning td {
+  background-color: #ffc;
+}
+
+table.update tr.warning .project a:link,
+table.update tr.warning .project a:visited, 
+.version-status .not-current {
+  color: #900;
+}
+
+div.messages,
+div.messages.status {
+  background: #FFFCE3;
+  border: 2px solid #EED300;
+  color: #C28E00;
+  font-weight: bold;
+  font-size: 116.7%; /* 14px/12px */
+  margin: 20px 0pt;
+  padding: 10px;
+  border-radius: 6px;
+  -moz-border-radius: 6px;
+  -webkit-border-radius: 6px;
+}
+
+div.messages ul {
+  list-style-position: inside;
+}
+
+div.messages em {
+  color: #656C9B;
+}
+
+div.error {
+  background-color: #fff2f2;
+  border-color: #f00;
+  color: #b20000;
+}
+
+/* @end system messages*/
+
+/* @group Tables
+/-------------------------------------------------------------- */
+
+/* Body of tables */
+
+tbody {
+  border-top: 1px solid #ccc;
+}
+
+/* Header of tables */
+
+thead th,
+th {
+  border-bottom: 3px solid #ccc;
+}
+
+tbody th {
+  border-bottom: 1px solid #ccc;
+}
+
+/* Alternating row background styles */
+
+tr.even,
+tr.even td {
+  background-color: #E3ECC0;
+  border-bottom: 1px solid #ccc;
+}
+
+tr.odd,
+tr.odd td {
+  background-color: #FDFFEF;
+  border-bottom: 1px solid #ccc;
+}
+
+tr.drag td,
+tr.drag-previous td {
+  color: #000;
+}
+
+td {
+  padding: 3px;
+}
+
+/* @end tables*/
+
+/* @group Taxonomy */
+
+/* @end */
+
+/* @end common elements*/
+
+/* @group Core Module styling
+/-------------------------------------------------------------- */
+
+/* @group Book
+/-------------------------------------------------------------- */
+
+.book-navigation .menu {
+  border-top: 1px solid #ccc;
+}
+
+.book-navigation .page-links {
+  border-top: 1px solid #ccc;
+  border-bottom: 1px solid #ccc;
+}
+
+/* @end book*/
+
+/* @group Comment
+/-------------------------------------------------------------- */
+
+#comments .inner {
+  margin: 0;
+}
+
+/*-unpublished comments-*/
+
+.inner #comments .comment-unpublished {
+  background: #fff4f4;
+  border: none;
+}
+
+#comments .marina-rounded-corners .inner-wrapper {
+  padding: 0;
+}
+
+#comments .marina-rounded-corners .inner-wrapper .inner-inner {
+  background: none;
+  padding: 3px;
+}
+
+#comments .block-icon {
+  height: 48px;
+  left: 6px;
+  position: absolute;
+  top: 0;
+  width: 48px;
+  z-index: 100;
+}
+
+.ie6 #comments .block-icon ,
+.ie7 #comments .block-icon {
+  left: 4px;
+  top: 2px;
+}
+
+.ie8 #comments .block-icon {
+  top: 0;
+}
+
+#comments h2.comments-header {
+  background: #94CE18;
+  color: #fff;
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 133.3%; /* 16px/12px */
+  font-weight: bold;
+  padding: 6px 14px 6px 50px;
+  text-shadow: #545454 1px 1px;
+  text-transform: uppercase;
+}
+
+#comments .content {
+  background: transparent;
+  border: none;
+}
+
+#main-wrapper #comments a.active {
+  color: #27638C;
+  text-decoration: none;
+}
+
+.box {
+  padding: 10px;
+}
+
+#comment-form {
+  margin: 0 0 20px;
+  padding: 0 20px;
+}
+
+.comment {
+  border: none;
+  margin: 6px 0 0;
+  padding: 10px;
+}
+
+.comment h3.title {
+  font-weight: bold;
+  margin: 0 0 5px 0;
+}
+
+.comment .links a {
+  font-size: 100%; /* 12px/12px */
+  text-align: right;/* LTR */
+}
+
+#comments .odd {
+  background: #F4F7E7;
+  border: 1px solid #ddd;
+}
+
+#comments .odd .even {
+  background: transparent;
+}
+
+#comments .even {
+  background: #fff;
+}
+
+#comments .comment-by-author {
+  background: #FFFFEA;
+}
+
+.comment ul.links {
+  clear: right;
+  display: inherit;
+  text-align: right; /* LTR */
+}
+
+#content-content .comment ul.links li {
+  background: transparent;
+  margin: 0 10px 0 0;  /* LTR */
+  padding: 0;
+}
+
+.signature {
+  border-top: 1px solid #d6ddb9;
+  font-family: serif;
+  font-size: 100%; /* 12px/12px */
+  margin: 10px 0;
+  padding: 0;
+}
+
+#comments .new {
+  float: right;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+/* @end comment module*/
+
+/* @group Field module
+/-------------------------------------------------------------- */
+
+/* @end fields*/
+
+/* @group Forum module
+/-------------------------------------------------------------- */
+
+.forum-topic-navigation {
+  border-top: 1px solid #D6DDB9;
+  border-bottom: 1px solid #D6DDB9;
+}
+
+/* @end forum*/
+
+/* @group Node
+/-------------------------------------------------------------- */
+
+.node .read-more a,
+.node .more-link a,
+.node .links a {
+  font-size: 108.3%; /* 13px/12px */
+  font-weight: bold;
+  margin: 0;
+}
+
+/* Default node styles */
+
+/* Change unpublished and preview colors for dark background themes */
+
+.node-unpublished {
+  background-color: #fff4f4;
+}
+
+.preview .node {
+  background-color: #ffffea;
+}
+
+/* Separators and padding for node teasers */
+
+.teaser {
+  padding-bottom: 15px;
+}
+
+/* Author/date info */
+
+.meta {
+  font-size: 91.7%; /* 11px/12px */
+  margin-bottom: 10px;
+}
+
+.submitted, 
+.terms {
+  font-size: 100%; /* 12px/12px */
+}
+
+.terms {
+ /* styling for byline and tags */
+ font-size: 100%; /* 12px/12px */
+}
+
+.terms {
+  line-height: 130%;
+}
+
+/* Links for nodes (taxonomy, commenting, read more, etc) */
+
+.content-region .content-inner .content-inner-inner .content ul.terms,
+.content-region .content-inner .content-inner-inner .content ul.links {
+  margin: 0;
+}
+
+.node ul.links li,
+.node ul.inline li,
+.node .links a {
+  background: transparent;
+  margin: 0;
+  padding: 0 14px 0 0; /*LTR */
+}
+
+div.full-node .inner .content {
+  border-bottom: 1px solid #D6DDB9;
+}
+
+div.full-node .inner .block .content {
+  border: none;
+}
+
+div.full-node.node-type-panel .content,
+div.full-node .panel-panel .content {
+  border-bottom: none;
+}
+
+#content-content .node ul.links li.comment_forbidden a {
+  
+}
+
+/* @end */
+
+/* @group Poll
+/-------------------------------------------------------------- */
+
+div.poll div.bar {
+  background-color: #ddd;
+}
+
+div.poll div.bar div.foreground {
+  background-color: #999;
+}
+
+/* @end poll */
+
+/* @group User Profile
+/-------------------------------------------------------------- */
+
+.profile .picture {
+  float: none;
+}
+
+.profile dt {
+  background-color: #ccc;
+}
+
+/* @end profile */
+
+/* @group Search
+/-------------------------------------------------------------- */
+
+/* @end search module*/
+
+/* @group User
+/-------------------------------------------------------------- */
+
+.fusion-horiz-login form input.form-submit {
+  font-size: 83.3%; /* 10px/12px */
+}
+
+.fusion-horiz-login #user-login-form {
+  padding-top: 1px;
+}
+
+.user-picture {
+  float: right;  /* LTR */
+  margin: 0 0 2px 4px; /*LTR */
+  padding: 2px;
+  position: relative;
+  z-index: 10;
+}
+
+/* @end user module*/
+
+/* @end core modules*/
+
+/* @group Fusion Core Skins
+/-------------------------------------------------------------- */
+
+/* @end Fusion core skins */
+
+/* List with bottom border
+   Fixes a common issue when list items have bottom borders and appear to be
+   doubled when lists end and begin. This removes the extra border-bottom
+ */
+
+.list-bottom-border ul li {
+  padding: 0 0 0 10px;
+  border-bottom: 1px solid #ccc;
+  line-height: 216.7%; /* 26px */
+  font-weight: bold;
+  list-style: none;
+  list-style-type: none;
+  list-style-image: none;
+}
+
+.list-bottom-border ul {
+  margin: 0;
+}
+
+.list-bottom-border ul li ul {
+  border-top: 1px solid #ccc;
+}
+
+.list-bottom-border ul li ul li.last {
+  border-top: 1px solid #ccc;
+  margin-bottom: -1px;
+  margin-top: -1px;
+}
+
+/* single line list with separators */
+
+.fusion-inline-menu ul.menu {
+  line-height: 100%;
+}
+
+.header-group .fusion-inline-menu {
+  font-size: 91.7%; /* 11px/12px */
+}
+
+.fusion-inline-menu ul.menu li {
+  line-height: 120%;
+  margin: 0;
+  padding: 0;
+  border-color: #ccc;
+}
+
+/* Styles for links */
+
+.fusion-inline-menu ul.links li a:link,
+.fusion-inline-menu ul.links li a:visited {
+  padding: 0 10px;
+  border-right: 1px solid #ccc;
+}
+
+.fusion-inline-menu ul.links li.first a:link,
+.fusion-inline-menu ul.linksli.first a:visited {
+  padding-left: 0;
+}
+
+.fusion-inline-menu ul.links li.last a:link,
+.fusion-inline-menu ul.links li.last a:visited {
+  padding-right: 0;
+  border-right: none;
+}

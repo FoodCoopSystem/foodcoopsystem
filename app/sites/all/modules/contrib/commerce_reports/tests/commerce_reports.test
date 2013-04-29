@@ -1,0 +1,616 @@
+<?php
+/**
+ * @file
+ * Unit tests for the commerce reports module.
+ */
+ 
+class CommerceReportsBaseTestCase extends CommerceBaseTestCase {
+  
+  protected $products;
+  protected $customers;
+  protected $orders;
+  
+  function setUp() {
+    $modules = parent::setUpHelper('all', array('commerce_reports'));
+    parent::setUp($modules);
+    
+    $this->products = array();
+    $this->customers = array();
+    $this->orders = array();
+  }
+  
+  /**
+   * Helper function creating multiple dummy products with a variable price.
+   */
+  protected function createProducts($amount = 1) {
+    for ($i = 0; $i < $amount; $i ++) {
+      $product = $this->createDummyProduct($this->randomName(), '', rand(1, 1000));
+      $this->products[$product->product_id] = $product;
+    }
+  }
+  
+  /**
+   * Helper function creating multiple dummy customers.
+   */
+  protected function createCustomers($amount = 1) {
+    for ($i = 0; $i < $amount; $i ++) {
+      $customer = $this->createStoreCustomer();
+      $this->customers[$customer->uid] = $customer;
+    }
+  }
+  
+  /**
+   * Helper function creating multiple dummy orders.
+   * If no customers or products exist, then one of each get created.
+   */
+  protected function createOrders($amount = 1, $createTransactions = FALSE, $possibleDates = array()) {
+    if (empty($this->products)) {
+      $this->createProducts();
+    }
+    
+    if (empty($this->customers)) {
+      $this->createCustomers();
+    }
+    
+    $order_status = 'completed';
+    if ($createTransactions) {
+      $order_status = 'pending';
+    }
+    
+    for ($i = 0; $i < $amount; $i ++) {
+      $totalProducts = rand(1, count($this->products));
+      $products = array();
+      
+      for ($x = 0; $x < $totalProducts; $x ++) {
+        $product = $this->products[array_rand($this->products)];
+        $products[$product->product_id] = rand(1, 10);
+      }
+      
+      if (!($customer = next($this->customers))) {
+        $customer = reset($this->customers);
+      }
+      
+      $order = $this->createDummyOrder($customer->uid, $products, $order_status);
+      
+      if (!empty($possibleDates)) {
+        $date = $possibleDates[array_rand($possibleDates)];
+        $order->created = $date;
+        
+        commerce_order_save($order);
+      }
+      
+      $transaction = NULL;
+      if ($createTransactions) {
+        $transaction = commerce_payment_transaction_new('commerce_payment_example', $order->order_id);
+        $transaction->amount = $order->commerce_order_total['und'][0]['amount'];
+        $transaction->status = 'success';
+        
+        commerce_payment_transaction_save($transaction);
+      }
+      
+      $this->orders[] = array(
+        'commerce_transaction' => $transaction,
+        'commerce_order' => $order,
+        'products' => $products,
+      );
+    }
+  }
+  
+  protected function getTotal() {
+    $total = 0;
+    
+    foreach ($this->orders as $order) {
+      foreach ($order['products'] as $product_id => $quantity) {
+        $total += $quantity * $this->products[$product_id]->commerce_price['und'][0]['amount'];
+      }
+    }
+    
+    return $total;
+  }
+  
+  /**
+   * Helper function to get different combinations of permission sets.
+   *
+   * @param $set
+   *  Can be a single string (from the following) or can be an array containing
+   *  multiple values that should be merged:
+   *    'site admin': Admin permissions for Drupal core modules
+   *    'store admin': All commerce "administer X" permissions
+   */
+  protected function permissionBuilder($sets) {
+    if (is_string($sets)) {
+      $sets = array($sets);
+    }
+    $store_admin = array(
+      'access commerce reports',
+    );
+    
+    $final_permissions = parent::permissionBuilder($sets);
+    
+    foreach ($sets as $set) {
+      switch ($set) {
+        case 'store admin':
+          $final_permissions = array_unique(array_merge($final_permissions, $store_admin));
+          break;
+      }
+    }
+    
+    return $final_permissions;
+  }
+  
+}
+
+class CommerceReportsUITestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Reports user interface',
+      'description' => 'Test the reports user interface.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  protected function _getLinks($label) {
+    $links = $this->xpath('//a[normalize-space(text())=:label]', array(':label' => $label));
+    
+    return $links;
+  }
+  
+  public function testMenuIntegration() {
+    $admin = $this->createUserWithPermissionHelper(array('site admin', 'store admin'));
+    $this->drupalLogin($admin);
+    
+    $this->drupalGet('admin');
+    $links = $this->_getLinks(t('Reports'));
+    $this->assertEqual(count($links), 1, t("The correct amount of menu entries to 'Reports' was found on the administration page."));
+    if ($links) {
+      $attributes = reset($links)->attributes();
+      $this->assertEqual($attributes['href'], '/?q=admin/reports', t('The menu entry points to the correct page.'));
+    }
+    
+    $this->drupalGet('admin/commerce');
+    $links = $this->_getLinks(t('Reports'));
+    $this->assertEqual(count($links), 1, t("The correct amount of menu entries to 'Reports' was found on the store administration page."));
+    if ($links) {
+      $attributes = reset($links)->attributes();
+      $this->assertEqual($attributes['href'], '/?q=admin/commerce/reports', t('The menu entry points to the correct page.'));
+    }
+    
+    $this->drupalGet('admin/commerce/reports');
+    $this->assertResponse(200, t('Reports admin can access reports.'));
+  }
+  
+}
+
+class CommerceReportsSalesOverviewTestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Sales overview reports',
+      'description' => 'Test the sales overview reports.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  protected function _test($data = array()) {
+    foreach ($data as $display => $information) {
+      $report = views_get_view_result('commerce_reports_sales_overview', $display);
+      $line = reset($report);
+      
+      foreach ($information as &$metric) {
+        if (empty($metric)) {
+          $metric = NULL;
+        }
+      }
+      
+      if (empty($line->field_data_commerce_order_total_commerce_order_total_amount)) {
+        $amount = 0;
+      }
+      else {
+        $amount = $line->field_data_commerce_order_total_commerce_order_total_amount;
+      }
+      
+      if (empty($line->order_id)) {
+        $sales = NULL;
+      }
+      else {
+        $sales = $line->order_id;
+      }
+      
+      $this->assertEqual($information['count'], $sales, t('The expected amount of orders is equal to the derived amount of orders.'));
+      $this->assertEqual($information['amount'], $amount, t('The expected total amount is equal to the derived total amount.'));
+    }
+  }
+  
+  public function testTodayOverview() {
+    $this->createCustomers(2);
+    $this->createOrders(10, TRUE, array(time()));
+    
+    $total = $this->getTotal();
+    
+    $testData = array(
+      'today' => array(
+        'count' => 10,
+        'amount' => $total,
+      ),
+      'yesterday' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'month' => array(
+        'count' => 10,
+        'amount' => $total,
+      ),
+    );
+    
+    $this->_test($testData);
+  }
+  
+  public function testYesterdayOverview() {
+    $this->createCustomers(2);
+    $this->createOrders(10, TRUE, array(time() - 86400));
+    
+    $total = $this->getTotal();
+    
+    $testData = array(
+      'today' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'yesterday' => array(
+        'count' => 10,
+        'amount' => $total,
+      ),
+      'month' => array(
+        'count' => 10,
+        'amount' => $total,
+      ),
+    );
+    
+    $this->_test($testData);
+  }
+  
+  public function testMonthlyOverview() {
+    $this->createCustomers(2);
+    $this->createOrders(10, TRUE, array(time() - 3 * 86400, time() - 5 * 86400, time() - 15 * 86400, time() - 20 * 86400, time() - 30 * 86400));
+    
+    $total = $this->getTotal();
+    
+    $testData = array(
+      'today' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'yesterday' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'month' => array(
+        'count' => 10,
+        'amount' => $total,
+      ),
+    );
+    
+    $this->_test($testData);
+  }
+  
+  public function testOutsideOverviewScope() {
+    $this->createCustomers(2);
+    $this->createOrders(10, TRUE, array(time() - 31 * 86400));
+    
+    $total = $this->getTotal();
+    
+    $testData = array(
+      'today' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'yesterday' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+      'month' => array(
+        'count' => 0,
+        'amount' => 0,
+      ),
+    );
+    
+    $this->_test($testData);
+  }
+
+}
+
+class CommerceReportsSalesTestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Sales reports',
+      'description' => 'Test the sales reports.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  public function testNoOrders() {
+    $this->_getDates();
+    
+    $this->_test();
+  }
+  
+  public function testSingleOrder() {
+    $this->createOrders(1, FALSE, $this->_getDates());
+    
+    $this->_test();
+  }
+  
+  public function testMultipleOrders() {
+    $this->createCustomers(5);
+    $this->createOrders(20, FALSE, $this->_getDates());
+    
+    $this->_test();
+  }
+  
+  protected function _getDates() {
+    $report = views_get_view_result('commerce_reports_sales', 'page');
+    $possibleDates = array();
+    
+    foreach ($report as $line) {
+      $possibleDates[] = $line->commerce_order_created_granularity;
+    }
+    
+    return $possibleDates;
+  }
+  
+  protected function _test() {
+    $sales = array();
+    foreach ($this->orders as $order) {
+      $created = $order['commerce_order']->created;
+      
+      if (empty($sales[$created])) {
+        $sales[$created] = array(
+          'orders' => 0,
+          'revenue' => 0,
+        );
+      }
+      
+      $sales[$created]['orders'] ++;
+      
+      foreach ($order['products'] as $product_id => $quantity) {
+        $sales[$created]['revenue'] += $quantity * $this->products[$product_id]->commerce_price['und'][0]['amount'];
+      }
+    }
+    
+    $report = views_get_view_result('commerce_reports_sales', 'page');
+    
+    foreach ($report as $line) {
+      $created = $line->commerce_order_created_granularity;
+      
+      if (empty($sales[$created])) {
+        $this->assertTrue(empty($line->order_id) && empty($line->commerce_order_total) && empty($line->commerce_order_total_1), t('There was no unintented activity.'));
+      }
+      else {
+        $orders = $sales[$created]['orders'];
+        $revenue = $sales[$created]['revenue'];
+        $average = (int) floor($revenue / $orders);
+        
+        $this->assertEqual($line->order_id, $orders, t('The right amount of orders was reported.'));
+        $this->assertEqual($line->field_data_commerce_order_total_commerce_order_total_amount, $revenue, t('The right amount of revenue was reported.'));
+        $this->assertEqual((int) floor($line->field_data_commerce_order_total_commerce_order_total_amount_1), $average, t('The right average of revenue was reported.'));
+      }
+    }
+  }
+  
+}
+
+class CommerceReportsPaymentMethodTestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Payment method reports',
+      'description' => 'Test the payment method reports.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  public function testExampleMethod() {
+    $this->createOrders(10, TRUE);
+    
+    $transactions = 0;
+    $revenue = 0;
+    
+    foreach ($this->orders as $order) {
+      $transactions ++;
+      $revenue += $order['commerce_transaction']->amount;
+    }
+    
+    $report = views_get_view_result('commerce_reports_payment_methods', 'default');
+    
+    $this->assertEqual(count($report), 1, t('Exactly one payment method was reported upon.'));
+    
+    foreach ($report as $line) {
+      $this->assertEqual($line->commerce_payment_transaction_payment_method, 'commerce_payment_example', t('The example payment method was used for this transaction.'));
+      
+      $this->assertEqual($line->transaction_id, $transactions, t('The right amount of transactions were reported.'));
+      $this->assertEqual($line->commerce_payment_transaction_amount, $revenue, t('The right amount of revenue was reported.'));
+    }
+  }
+  
+}
+
+class CommerceReportsCustomerTestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Customer reports',
+      'description' => 'Test the customer reports.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  function setUp() {
+    $this->resetAll();
+    parent::setUp();
+  }
+  
+  /**
+   * Tests creating a single order for a single customer, containing a single product with a variable quantity.
+   * Then verifies if the reporting is correct.
+   */
+  function testSingleCustomer() {
+    $this->createOrders();
+    
+    $this->_test();
+  }
+  
+  /**
+   * Make one customer perform multiple orders with multiple products.
+   * Then verifies if the reporting is correct.
+   */
+  function testSingleCustomerMultipleProducts() {
+    $this->createProducts(5);
+    $this->createOrders();
+    
+    $this->_test();
+  }
+  
+  /**
+   * Make one customer perform multiple orders with multiple products.
+   * Then verifies if the reporting is correct.
+   */
+  function testMultipleCustomers() {
+    $this->createCustomers(3);
+    $this->createProducts(2);
+    $this->createOrders(10);
+    
+    $this->_test();
+  }
+  
+  protected function _test() {
+    $customers = array();
+    
+    foreach ($this->orders as $order) {
+      $uid = $order['commerce_order']->uid;
+      
+      if (empty($customers[$uid])) {
+        $customers[$uid] = array(
+          'orders' => 0,
+          'products' => 0,
+          'revenue' => 0,
+        );
+      }
+      
+      $customers[$uid]['orders'] ++;
+      
+      foreach ($order['products'] as $product_id => $quantity) {
+        $customers[$uid]['products'] += $quantity;
+        $customers[$uid]['revenue'] += $quantity * $this->products[$product_id]->commerce_price['und'][0]['amount'];
+      }
+    }
+    
+    $report = views_get_view_result('commerce_reports_customers', 'default');
+    
+    $this->assertEqual(count($report), min(count($customers), 10), t('The amount of customers (%reported) that is reported (%generated) upon is correct.', array('%reported' => count($report), '%generated' => count($customers))));
+    
+    foreach ($report as $line) {
+      $uid = $line->uid;
+      
+      $orders = $line->commerce_order_users_order_id;
+      $revenue = $line->commerce_order_users__field_data_commerce_order_total_commer;
+      $average = $line->commerce_order_users__field_data_commerce_order_total_commer_2;
+      
+      $this->assertFalse(empty($customers[$uid]), t('The customer %uid that is reported upon exists.', array('%uid' => $uid)));
+      
+      if (!empty($customers[$uid])) {
+        $this->assertEqual($customers[$uid]['orders'], $orders, t('The reported amount of orders %reported matches the generated amount of orders %generated.', array('%reported' => $orders, '%generated' => $customers[$uid]['orders'])));
+        // $this->assertEqual($customers[$uid]['products'], $products, t('The reported amount of line items %reported matches the generated amount of line items %generated.', array('%reported' => $products, '%generated' => $customers[$uid]['products'])));
+        $this->assertEqual($customers[$uid]['revenue'], $revenue, t('The reported revenue %reported matches the generated revenue %generated.', array('%reported' => $revenue, '%generated' => $customers[$uid]['revenue'])));
+      }
+    }
+  }
+  
+}
+ 
+class CommerceReportsProductTestCase extends CommerceReportsBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Product reports',
+      'description' => 'Test the product reports.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  function setUp() {
+    $this->resetAll();
+    parent::setUp();
+  }
+  
+  /**
+   * Tests creating a single order, containing a single product with a variable quantity.
+   * Then verifies if the reporting is correct.
+   */
+  function testSingleProduct() {
+    $this->createOrders();
+    
+    $this->_test();
+  }
+  
+  /**
+   * Tests creating a single order, containing multiple products with a variable quantity.
+   * Then verifies if the reporting is correct.
+   */
+  function testMultipleProducts() {
+    $this->createProducts(10);
+    $this->createOrders();
+    
+    $this->_test();
+  }
+  
+  /**
+   * Tests creating a multiple orders, containing multiple products with a variable quantity.
+   * Then verifies if the reporting is correct.
+   */
+  function testMultipleOrdersProducts() {
+    $this->createProducts(5);
+    $this->createOrders(5);
+    
+    $this->_test();
+  }
+  
+  protected function _test() {
+    $products = array();
+    
+    foreach ($this->orders as $order) {
+      foreach ($order['products'] as $product_id => $quantity) {
+        $sku = $this->products[$product_id]->sku;
+        
+        if (empty($products[$sku])) {
+          $products[$sku] = array(
+            'quantity' => 0,
+            'revenue' => 0,
+          );
+        }
+        
+        $products[$sku]['quantity'] += $quantity;
+        $products[$sku]['revenue'] += $quantity * $this->products[$product_id]->commerce_price['und'][0]['amount'];
+      }
+    }
+    
+    $report = views_get_view_result('commerce_reports_products', 'default');
+    
+    $this->assertEqual(count($report), min(count($products), 10), t('The amount of products (%reported) that is reported (%generated) upon is correct.', array('%reported' => count($report), '%generated' => count($products))));
+    
+    foreach ($report as $line) {
+      $sku = $line->commerce_product_field_data_commerce_product_sku;
+      $quantity = $line->commerce_line_item_quantity;
+      $revenue = $line->field_data_commerce_total_commerce_total_amount;
+      
+      $this->assertFalse(empty($products[$sku]), t('The product %sku that is reported upon exists.', array('%sku' => $sku)));
+      
+      if (!empty($products[$sku])) {
+        $this->assertEqual($products[$sku]['quantity'], $quantity, t('The reported quantity %reported matches the generated quantity %generated.', array('%sku' => $sku, '%reported' => $quantity, '%generated' => $products[$sku]['quantity'])));
+        $this->assertEqual($products[$sku]['revenue'], $revenue, t('The reported revenue %reported matches the generated revenue %generated.', array('%sku' => $sku, '%reported' => $revenue, '%generated' => $products[$sku]['revenue'])));
+      }
+    }
+  }
+  
+}

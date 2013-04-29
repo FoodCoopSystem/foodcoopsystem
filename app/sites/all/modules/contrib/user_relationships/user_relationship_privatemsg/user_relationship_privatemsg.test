@@ -1,0 +1,193 @@
+<?php
+/**
+ * @file
+ * User relationship privatemsg tests.
+ */
+
+/**
+ * Tests cases to send messages to related users.
+ */
+class UserRelationshipsPrivatemsgRecipientTestCase extends DrupalWebTestCase {
+
+  /**
+   * Implements getInfo().
+   */
+  function getInfo() {
+    return array(
+      'name' => t('User Relationships Privatemsg recipients'),
+      'description' => t('Check relationship recipient type for privatemsg'),
+      'group' => t('User Relationships'),
+      'dependencies' => array('privatemsg'),
+    );
+  }
+
+  /**
+   * Enable required modules.
+   */
+  function setUp() {
+    return parent::setUp('privatemsg', 'user_relationships', 'user_relationships_ui', 'user_relationship_privatemsg');
+  }
+
+  /**
+   * Tests sending a message to related users.
+   */
+  function testSendToRelationship() {
+
+    // Create relationship.
+    $relationship = array(
+      'name' => $this->randomName(),
+      'plural_name' => $this->randomName(),
+      'requires_approval' => FALSE,
+      'expires_val' => 0,
+    );
+    user_relationships_type_save((object)$relationship);
+
+    // Flush permission cache.
+    user_relationships_types_load(TRUE);
+    $this->checkPermissions(array(), TRUE);
+
+    $have_permission = 'can have ' . $relationship['name'] . ' relationships';
+    $request_permission = 'can request ' . $relationship['name'] . ' relationships';
+    $maintain_permission = 'maintain ' . $relationship['name'] . ' relationships';
+
+    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', $maintain_permission, 'write privatemsg to relationships', 'access user profiles'));
+    $userA = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'write privatemsg to relationships'));
+    $userB = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients'));
+
+    $this->drupalLogin($admin);
+
+    // Only allow messages between related users.
+    $edit = array(
+      'user_relationships_restrict_privatemsg' => 'relationships',
+    );
+    $this->drupalPost('admin/config/people/relationships/settings', $edit, t('Save configuration'));
+
+    // Become related to user A and B.
+    $this->drupalGet('relationship/' . $userA->uid . '/request/1');
+    $this->drupalPost(NULL, array(), t('Send'));
+    $this->drupalGet('relationship/' . $userB->uid . '/request/1');
+    $this->drupalPost(NULL, array(), t('Send'));
+
+    // Send a message to related users.
+    $this->drupalGet('messages/new');
+    $this->assertText(t('Enter the name of a user relationship to write a message to all related users. Example: @relationship.', array('@relationship' => $relationship['plural_name'])), t('Description is displayed.'));
+
+    $message = array(
+      'recipient' => $relationship['plural_name'],
+      'subject' => $this->randomName(),
+      'body[value]' => $this->randomName(50),
+    );
+    $this->drupalPost(NULL, $message, t('Send message'));
+    $this->assertText(t('A message has been sent to your @relationship.', array('@relationship' => $relationship['plural_name'])));
+
+    // Check if userA received the message and is able to respond.
+    $this->drupalLogin($userA);
+    $this->drupalGet('messages');
+    $this->clickLink($message['subject']);
+    $this->assertText($message['body[value]']);
+
+    // Send a reply
+    $reply = array('body[value]' => $this->randomName(50));
+    $this->drupalPost(NULL, $reply, t('Send message'));
+
+    // Login as userB and make sure the original message is displayed but not the message nor the username of userA.
+    $this->drupalLogin($userB);
+    $this->drupalGet('messages');
+    $this->clickLink($message['subject']);
+    $this->assertText($message['body[value]']);
+    $this->assertNoText($userA->name);
+
+    // Log in as admin and check that the response of user A is visible.
+    $this->drupalLogin($admin);
+    $this->drupalGet('messages');
+    $this->clickLink($message['subject']);
+    $this->assertText($reply['body[value]']);
+
+    $reply2 = array('body[value]' => $this->randomName(50));
+    $this->drupalPost(NULL, $reply2, t('Send message'));
+
+    // Log in as user B again and check that the reply but not user a is visible.
+    $this->drupalLogin($userB);
+    $this->drupalGet('messages');
+    $this->clickLink($message['subject']);
+    $this->assertText($reply2['body[value]']);
+    // @todo: does not yet work.
+    //$this->assertNoText($userA->name);
+
+    // Test reverse relationship.
+    $this->drupalLogin($userA);
+    $this->drupalGet('messages/new');
+    $this->assertText(t('Enter the name of a user relationship to write a message to all related users. Example: @relationship.', array('@relationship' => $relationship['plural_name'])), t('Description is displayed.'));
+
+    $message = array(
+      'recipient' => $relationship['plural_name'],
+      'subject' => $this->randomName(),
+      'body[value]' => $this->randomName(50),
+    );
+    $this->drupalPost(NULL, $message, t('Send message'));
+    $this->assertText(t('A message has been sent to your @relationship.', array('@relationship' => $relationship['plural_name'])));
+
+    // Log in as admin and check that the response of user A is visible.
+    $this->drupalLogin($admin);
+    $this->drupalGet('messages');
+    $this->clickLink($message['subject']);
+    $this->assertText($message['body[value]']);
+  }
+
+  /**
+   * Test a relationship with bath api processing.
+   */
+  function testManyRelations() {
+
+        // Create relationship.
+    $relationship = array(
+      'name' => $this->randomName(),
+      'plural_name' => $this->randomName(),
+      'requires_approval' => FALSE,
+      'expires_val' => 0,
+    );
+    user_relationships_type_save((object)$relationship);
+
+    // Flush permission cache.
+    user_relationships_types_load(TRUE);
+    $this->checkPermissions(array(), TRUE);
+
+    $have_permission = 'can have ' . $relationship['name'] . ' relationships';
+    $request_permission = 'can request ' . $relationship['name'] . ' relationships';
+    $maintain_permission = 'maintain ' . $relationship['name'] . ' relationships';
+    $admin = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'administer user relationships', $maintain_permission, 'write privatemsg to relationships', 'access user profiles'));
+
+    $this->drupalLogin($admin);
+
+    // Create 25 users (more than are allowed to be process directly) and relate
+    // them to the admin.
+    $users = array();
+    for ($i = 0; $i < 25; $i++) {
+      $users[$i] = $this->drupalCreateUser(array('read privatemsg', 'write privatemsg', $have_permission, $request_permission, 'view relationship recipients', 'write privatemsg to relationships'));
+      // Become related to that user.
+      $this->drupalGet('relationship/' . $users[$i]->uid . '/request/1');
+      $this->drupalPost(NULL, array(), t('Send'));
+    }
+    variable_set('privatemsg_recipient_small_threshold', 20);
+
+    // Send a message to related users.
+    $this->drupalGet('messages/new');
+    $this->assertText(t('Enter the name of a user relationship to write a message to all related users. Example: @relationship.', array('@relationship' => $relationship['plural_name'])), t('Description is displayed.'));
+
+    $message = array(
+      'recipient' => $relationship['plural_name'],
+      'subject' => $this->randomName(),
+      'body[value]' => $this->randomName(50),
+    );
+    $this->drupalPost(NULL, $message, t('Send message'));
+    $this->assertText(t('A message has been sent to your @relationship.', array('@relationship' => $relationship['plural_name'])));
+
+    // Test if all recipients see the message.
+    foreach ($users as $user) {
+      $this->drupalLogin($user);
+      $this->drupalGet('messages');
+      $this->clickLink($message['subject']);
+      $this->assertText($message['body[value]']);
+    }
+  }
+}

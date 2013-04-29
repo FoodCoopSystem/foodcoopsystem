@@ -1,0 +1,25 @@
+<?php
+/**
+ * @file
+ * User Relationships Defaults installation script
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function user_relationship_defaults_schema() {
+  $schema['user_relationship_defaults'] = array(
+    'fields'  => array(
+      'rdid'          => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+      'uid'           => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'rtid'          => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+    ),
+    'indexes' => array(
+      'uid'   => array('uid'),
+      'rtid'  => array('rtid'),
+    ),
+    'primary key' => array('rdid')
+  );
+
+  return $schema;
+}

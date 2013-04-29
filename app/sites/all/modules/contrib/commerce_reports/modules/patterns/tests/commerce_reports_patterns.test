@@ -1,0 +1,72 @@
+<?php
+
+class CommerceReportsPatternsTestCase extends CommerceBaseTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Reports patterns',
+      'description' => 'Test association rule mining implementation.',
+      'group' => 'Drupal Commerce',
+    );
+  }
+  
+  function setUp() {
+    $modules = parent::setUpHelper('all', array('commerce_reports_patterns'));
+    parent::setUp($modules);
+  }
+  
+  protected function createPatternsAdmin() {
+    $permissions = $this->permissionBuilder('store admin');
+    $permissions[] = 'access commerce reports patterns';
+    $user = $this->drupalCreateUser($permissions);
+    return $user;
+  }
+  
+  protected function addTransaction() {
+    $products = func_get_args();
+    
+    $order = commerce_cart_order_new(1);
+    $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+    
+    $line_items = array();
+    foreach ($products as $product) {
+      $line_item = commerce_product_line_item_new($product, 1);
+      $line_item->order_id = $order->order_id;
+      
+      commerce_line_item_save($line_item);
+      
+      $order_wrapper->commerce_line_items[] = $line_item;
+    }
+    
+    commerce_order_status_update($order, 'completed', TRUE);
+    commerce_order_save($order);
+    
+    return $order;
+  }
+  
+  public function testExample() {
+    $milk = $this->createDummyProduct('milk');
+    $bread = $this->createDummyProduct('bread');
+    $butter = $this->createDummyProduct('butter');
+    $beer = $this->createDummyProduct('beer');
+    
+    $this->addTransaction($milk, $bread);
+    $this->addTransaction($butter);
+    $this->addTransaction($beer);
+    $this->addTransaction($milk, $bread, $butter);
+    $this->addTransaction($bread);
+    
+    $admin = $this->createPatternsAdmin();
+    $this->drupalLogin($admin);
+    
+    $this->drupalPost(
+      'admin/commerce/reports/patterns', 
+      array(
+        'min_support' => '10',
+        'min_confidence' => '10',
+      ),
+      t('Generate')
+    );
+  }
+  
+}

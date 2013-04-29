@@ -1,0 +1,15 @@
+name = Rules Link
+description = Attach link to entities for triggering Rules components.
+package = Rules
+core = 7.x
+configure = admin/config/workflow/rules_links
+dependencies[] = rules
+dependencies[] = rules_admin
+files[] = rules_link.admin.inc
+files[] = rules_link.test
+; Information added by drupal.org packaging script on 2011-12-19
+version = "7.x-1.0-beta3"
+core = "7.x"
+project = "rules_link"
+datestamp = "1324292445"
+

@@ -1,0 +1,18 @@
+name = Invite
+description = Allows your users to send and track invitations to join your site.
+core = 7.x
+package = Invite
+dependencies[] = token
+files[] = invite.module
+files[] = invite.admin.inc
+files[] = invite.pages.inc
+files[] = invite.tokens.inc
+files[] = invite.install
+configure = admin/config/people/invite
+
+; Information added by drupal.org packaging script on 2011-12-05
+version = "7.x-2.1-beta2"
+core = "7.x"
+project = "invite"
+datestamp = "1323057641"
+

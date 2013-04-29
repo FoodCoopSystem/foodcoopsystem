@@ -1,0 +1,1189 @@
+<?php
+
+/**
+ * @file
+ * Defines a field type for referencing a field from another.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function field_reference_menu() {
+  $items['field_reference/autocomplete/%/%/%'] = array(
+    'page callback' => 'field_reference_autocomplete',
+    'page arguments' => array(2, 3, 4),
+    'access callback' => 'reference_autocomplete_access',
+    'access arguments' => array(2, 3, 4),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_field_info().
+ */
+function field_reference_field_info() {
+  return array(
+    'field_reference' => array(
+      'label'             => t('Field reference'),
+      'description'       => t('This field stores a reference to another field.'),
+      'settings'          => array(
+        'fields' => array(),
+        'granularity' => array(
+          'entity' => 1,
+          'revision' => 0,
+          'language' => 0,
+          'value' => 0,
+        ),
+        'allow_general' => FALSE,
+        'append_id' => FALSE,
+      ),
+      'default_widget'    => 'options_select',
+      'default_formatter' => 'field_reference_default',
+      /*
+      // @todo: Could this be used in a field reference?
+
+      // Support hook_entity_property_info() from contrib "Entity API".
+      'property_type' => 'node',
+      */
+      /*
+      // Support default token formatter for field tokens.
+      'default_token_formatter' => 'field_reference_plain',
+      */
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_schema().
+ */
+function field_reference_field_schema($field) {
+  $columns = array(
+    'field_key' => array(
+      'type'     => 'varchar',
+      'length'   => 32,
+      'not null' => FALSE,
+    ),
+    'entity_type' => array(
+      'type'     => 'varchar',
+      'length'   => 128,
+      'not null' => FALSE,
+    ),
+    'entity_id' => array(
+      'type'     => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+    ),
+    'revision_id' => array(
+      'type'     => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+    ),
+    'language' => array(
+      'type'     => 'varchar',
+      'length'   => 32,
+      'not null' => FALSE,
+    ),
+    'delta' => array(
+      'type'     => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE,
+    ),
+  );
+  return array(
+    'columns' => $columns,
+    'indexes' => array(
+      'field_reference_field_key' => array('field_key'),
+      'field_reference_entity_type' => array('entity_type'),
+      'field_reference_entity_id' => array('entity_id'),
+      'field_reference_revision_id' => array('revision_id'),
+      'field_reference_language' => array('language'),
+      'field_reference_delta' => array('delta'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_settings_form().
+ */
+function field_reference_field_settings_form($field, $instance, $has_data) {
+  $settings = $field['settings'];
+  $form = array();
+
+  $field_info_fields = field_info_fields();
+  $field_info_instances = field_info_instances();
+  $entity_info = entity_get_info();
+
+  $form['fields'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Fields that can be referenced'),
+    '#element_validate' => array('_field_reference_fields_validate'),
+  );
+
+  foreach ($field_info_instances as $entity_type => $entity_type_data) {
+    foreach ($entity_type_data as $bundle => $bundle_data) {
+      $bundle_options = array();
+      foreach ($bundle_data as $field_key => $field_data) {
+        $storage = &$field_info_fields[$field_key]['storage'];
+        // Only list fields with sql storage, as that's all I know how to handle.
+        if ($storage['type'] == 'field_sql_storage' && $storage['active'] == 1) {
+          $bundle_options[$field_key] = $field_data['label'] . ' (' . $field_key . ')';
+        }
+      }
+      if (!empty($bundle_options)) {
+        $form['fields'][$entity_type][$bundle] = array(
+          '#type' => 'checkboxes',
+          '#title' => $entity_info[$entity_type]['bundles'][$bundle]['label'],
+          '#default_value' => isset($settings['fields'][$entity_type][$bundle]) ? $settings['fields'][$entity_type][$bundle] : array(),
+          '#options' => $bundle_options,
+        );
+      }
+    }
+    if (!empty($form['fields'][$entity_type])) {
+      $form['fields'][$entity_type]['#type'] = 'fieldset';
+      $form['fields'][$entity_type]['#title'] = $entity_info[$entity_type]['label'];
+      $form['fields'][$entity_type]['#collapsible'] = TRUE;
+      $form['fields'][$entity_type]['#collapsed'] = empty($settings['fields'][$entity_type]);
+    }
+  }
+
+  $form['granularity'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Granularity'),
+    '#description' => t('These settings refer to how fields are targetted during selection, for example whether to allow targetting of fields from specific revisions or languages.  Each option adds a performance hit in the form widget.'),
+  );
+
+  $form['granularity']['entity'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Entity'),
+    '#default_value' => $settings['granularity']['entity'],
+    '#description' => t('Target other entities, if not set will show fields from the current entity.'),
+  );
+
+  $form['granularity']['revision'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Revision'),
+    '#default_value' => $settings['granularity']['revision'],
+    '#description' => t('Target specific revisions, if not set will show fields from the current revision.')
+     . ' ' . t('Note: Using <em>Revision</em> without <em>Entity</em> currently produces unexpected behavior.'),
+  );
+
+  $form['granularity']['language'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Language'),
+    '#default_value' => $settings['granularity']['language'],
+    '#description' => t('Target specific languages, if not set will show fields from the current language.'),
+  );
+
+  $form['granularity']['value'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Value'),
+    '#default_value' => $settings['granularity']['value'],
+    '#description' => t('Target a delta value, if not set will show the entire field.'),
+  );
+
+  $form['allow_general'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Allow general'),
+    '#default_value' => $settings['allow_general'],
+    '#description' => t('Enables targetting of non-specific values when granularity is used. For example when <em>Entity</em> granularity is used, you can target the current entity.  Adds a performance hit in the form widget.'),
+  );
+
+  $form['append_id'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Append ID'),
+    '#default_value' => $settings['append_id'],
+    '#description' => t('Append the internal field reference ID to list items, for disambiguation.'),
+  );
+
+  return $form;
+}
+
+/**
+ * Validate callback for the 'fields' fieldset.
+ *
+ * Clean up the fields array.
+ */
+function _field_reference_fields_validate($element, &$form_state, $form) {
+  $value = array();
+  foreach (element_children($element) as $entity_type) {
+    foreach (element_children($element[$entity_type]) as $bundle) {
+      foreach (element_children($element[$entity_type][$bundle]) as $field_key) {
+        if (!empty($element[$entity_type][$bundle][$field_key]['#value'])) {
+          $value[$entity_type][$bundle][$field_key] = $field_key;
+        }
+      }
+    }
+  }
+  if (empty($value)) {
+    form_set_error('fields', t('You must select at least one field that can be referenced.'));
+  }
+  form_set_value($element, $value, $form_state);
+}
+
+/**
+ * Implements hook_field_validate().
+ */
+function field_reference_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  foreach ($items as $delta => $item) {
+    if (is_array($item) && !empty($item['value'])) {
+      // Get the allowed values for this field.
+      $options = array(
+        'prevent_label' => TRUE,
+      );
+      $refs = field_reference_potential_references($field, $instance, $options);
+      // Check if $item['value'] is a key in that list.
+      if (!isset($refs[$item['value']])) {
+        $errors[$field['field_name']][$langcode][$delta][] = array(
+          'error' => 'invalid_value',
+          'message' => t("%name: invalid input.",
+            array('%name' => $instance['label'])),
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function field_reference_field_is_empty($item, $field) {
+  return empty($item['field_key']);
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function field_reference_field_formatter_info() {
+  $ret = array(
+    'field_reference_default' => array(
+      'label'       => t('Default'),
+      'description' => t("Display the field using it's default view mode."),
+      'field types' => array('field_reference'),
+    ),
+    'field_reference_full' => array(
+      'label'       => t('Full'),
+      'description' => t('Display the field using the <em>full</em> view mode.'),
+      'field types' => array('field_reference'),
+    ),
+    'field_reference_teaser' => array(
+      'label'       => t('Teaser'),
+      'description' => t('Display the field using the <em>teaser</em> view mode.'),
+      'field types' => array('field_reference'),
+    ),
+  );
+  return $ret;
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function field_reference_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $result = array();
+
+  if ($field['type'] != 'field_reference') {
+    return $result;
+  }
+
+  switch ($display['type']) {
+    case 'field_reference_default':
+      // Use the current entity's view mode, or array() to get the field's defaults as a last resort.
+      // This doesn't work yet due to core issue http://drupal.org/node/1154382
+      $field_display = !empty($entity->view_mode) ? $entity->view_mode : array();
+      break;
+
+    case 'field_reference_full':
+      $field_display = 'full';
+      break;
+
+    case 'field_reference_teaser':
+      $field_display = 'teaser';
+      break;
+  }
+
+  foreach ($items as $delta => $item) {
+    $field_entity_type = !empty($item['entity_type']) ? $item['entity_type'] : $entity_type;
+
+    if (empty($entity_type_info[$field_entity_type])) {
+      $entity_type_info[$field_entity_type] = field_reference_entity_get_info($field_entity_type);
+    }
+    if (!empty($item['revision_id']) && !empty($entity_type_info[$field_entity_type]['entity keys']['revision'])) {
+      $field_entity_id = !empty($item['entity_id']) ? $item['entity_id'] : $entity->{$entity_type_info[$field_entity_type]['entity keys']['id']};
+      $field_revision_key = $entity_type_info[$field_entity_type]['entity keys']['revision'];
+      $field_entity = reset(entity_load($field_entity_type, $field_entity_id, array($field_revision_key => $item['revision_id'])));
+    }
+    else {
+      $field_entity = !empty($item['entity_id']) ? reset(entity_load($field_entity_type, array($item['entity_id']))) : $entity;
+    }
+
+
+    // Check access to the entity.
+    //if (field_info_instance($field_entity_type, $item['field_key'], $bundle_name)) {
+      //continue;
+    //}
+
+    $field_language = !empty($item['language']) ? $item['language'] : $langcode;
+    if (isset($item['delta']) && !is_null($item['delta'])) {
+      $field_items = field_get_items($field_entity_type, $field_entity, $item['field_key'], $field_language);
+      if (!empty($field_items[$item['delta']])) {
+        $result[$item['delta']] = field_view_value($field_entity_type, $field_entity, $item['field_key'], $field_items[$item['delta']], $field_display, $field_language);
+      }
+    }
+    else {
+      //$result[$delta] = 'temp';
+      //dpm(array($field_entity_type, $field_entity, $item['field_key'], $field_display, $field_language));
+      //continue;
+
+      // This would include the label:
+      //$result[$delta] = field_view_field($field_entity_type, $field_entity, $item['field_key'], $field_display, $field_language);
+
+      $field_items = field_get_items($field_entity_type, $field_entity, $item['field_key'], $field_language);
+      if ($field_items) {
+        foreach ($field_items as $delta => $field_item) {
+          $result[$delta] = field_view_value($field_entity_type, $field_entity, $item['field_key'], $field_item, $field_display, $field_language);
+        }
+      }
+
+    }
+
+  }
+
+  return $result;
+}
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function field_reference_field_widget_info() {
+  return array(
+    'field_reference_autocomplete' => array(
+      'label'       => t('Autocomplete text field'),
+      'description' => t('Display the list of referenceable fields as a textfield with autocomplete behaviour.'),
+      'field types' => array('field_reference'),
+      'settings'    => array(
+        'autocomplete_match' => 'contains',
+        'size' => 60,
+        'autocomplete_path' => 'field_reference/autocomplete',
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_info_alter().
+ */
+function field_reference_field_widget_info_alter(&$info) {
+  $info['options_select']['field types'][] = 'field_reference';
+  $info['options_buttons']['field types'][] = 'field_reference';
+}
+
+/**
+ * Implements hook_field_widget_settings_form().
+ */
+function field_reference_field_widget_settings_form($field, $instance) {
+  $widget   = $instance['widget'];
+  $defaults = field_info_widget_settings($widget['type']);
+  $settings = array_merge($defaults, $widget['settings']);
+
+  $form = array();
+  if ($widget['type'] == 'field_reference_autocomplete') {
+    $form['autocomplete_match'] = array(
+      '#type'             => 'select',
+      '#title'            => t('Autocomplete matching'),
+      '#default_value'    => $settings['autocomplete_match'],
+      '#options'          => array(
+        'starts_with'     => t('Starts with'),
+        'contains'        => t('Contains'),
+      ),
+      '#description'      => t('Select the method used to collect autocomplete suggestions. Note that <em>Contains</em> can cause performance issues on sites with thousands of entities, however also note that each word typed into the autocomplete will be treated as a separate keyword to further filter the suggestions, so <em>Contains</em> is the most usable method for such cases where the typed keyword is the second or third word of the field or entity label.'),
+    );
+    $form['size'] = array(
+      '#type'             => 'textfield',
+      '#title'            => t('Size of textfield'),
+      '#default_value'    => $settings['size'],
+      '#element_validate' => array('_element_validate_integer_positive'),
+      '#required'         => TRUE,
+    );
+  }
+  return $form;
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function field_reference_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  switch ($instance['widget']['type']) {
+    case 'field_reference_autocomplete':
+      $element += array(
+        '#type' => 'textfield',
+        '#default_value' => isset($items[$delta]) ? $items[$delta] : NULL,
+        '#autocomplete_path' => $instance['widget']['settings']['autocomplete_path'] . '/' . $instance['entity_type'] . '/' . $instance['bundle'] . '/' . $field['field_name'],
+        '#size' => $instance['widget']['settings']['size'],
+        '#element_validate' => array('field_reference_autocomplete_validate'),
+        '#value_callback' => 'field_reference_autocomplete_value',
+      );
+      break;
+  }
+  return array('field_key' => $element);
+}
+
+/**
+ * Implements hook_field_widget_form_alter().
+ */
+function field_reference_field_widget_form_alter(&$element, &$form_state, $context) {
+  if ($context['field']['type'] == 'field_reference' && $context['instance']['widget']['type'] != 'field_reference_autocomplete') {
+    // Put the default values back in, because the cheeky widget modules filter them out.
+    if (!empty($context['items'][$context['delta']])) {
+      $element['#default_value'] = $context['items'][$context['delta']];
+    }
+    // Add a value callback.
+    $element['#value_callback'] = 'field_reference_regular_value';
+  }
+}
+
+/**
+ * Value callback for a non-autocomplete field_reference element.
+ */
+function field_reference_regular_value($element, $input = FALSE, $form_state) {
+  if ($input === FALSE) {
+    // Construct the default value.
+    $field_reference = $element['#default_value'];
+    if (!empty($field_reference)) {
+      return field_reference_key_create($field_reference);
+    }
+  }
+}
+
+/**
+ * Value callback for a field_reference autocomplete element.
+ */
+function field_reference_autocomplete_value($element, $input = FALSE, $form_state) {
+  if ($input === FALSE) {
+    // Construct the autocomplete prefill value.
+    $field_reference = $element['#default_value'];
+    if (!empty($field_reference)) {
+
+      $field_key = field_reference_key_create($field_reference);
+
+      // Get the allowed values for this field.
+      $element_field = field_info_field($element['#field_name']);
+      $options = array(
+        'append_id' => FALSE,
+        'entity_type' => $element['#entity_type'],
+        'bundle' => $element['#bundle'],
+      );
+
+      $instance = $form_state['field'][$element['#field_name']][$element['#language']]['instance'];
+
+      $refs = field_reference_potential_references($element_field, $instance, $options);
+
+      // Check if $field_key is a key in that list.
+      if (isset($refs[$field_key])) {
+        $field_label = $refs[$field_key];
+      }
+      else {
+        $field_label = t('Missing field');
+      }
+
+      return $field_label . ' [' . $field_key . ']';
+    }
+  }
+}
+
+/**
+ * Validation callback for a field_reference autocomplete element.
+ */
+function field_reference_autocomplete_validate($element, &$form_state, $form) {
+  $field_key = NULL;
+
+  if (!empty($element['#value'])) {
+    // Check whether we have a field id.
+    preg_match('/.*?\\[(.*?)\\]/is', $element['#value'], $matches);
+    if (!empty($matches[1])) {
+      // Field id passed through.
+      $field_key = $matches[1];
+    }
+    else {
+      $instance = field_widget_instance($element, $form_state);
+      form_error($element, t('%name: field reference key not supplied in autocomplete value, please select an autocomplete suggestion.', array('%name' => $instance['label'])));
+    }
+  }
+
+  // Set the element's value as the field key.
+  form_set_value($element, $field_key, $form_state);
+}
+
+/**
+ * Implements hook_field_presave().
+ */
+function field_reference_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  foreach (array_keys($items) as $delta) {
+    // For widgets not defined by this module that invoke this function, check
+    // there is only a single key set before converting the value.
+    if (count($items[$delta]) === 1) {
+      $items[$delta] = field_reference_key_read($items[$delta]['field_key']);
+    }
+  }
+}
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function field_reference_field_widget_error($element, $error, $form, &$form_state) {
+  form_error($element['field_key'], $error['message']);
+}
+
+/**
+ * Builds a list of referenceable fields suitable for the '#option' FAPI property.
+ *
+ * @param $field
+ *   The field definition.
+ * @param $instance
+ *   The instance (may be NULL!)
+ *
+ * @return
+ *   An array of referenceable field titles, keyed by field reference id.
+ */
+function _field_reference_options($field, $instance) {
+  $references = field_reference_potential_references($field, $instance);
+
+  $options = array();
+  foreach ($references as $key => $value) {
+    $options[$key] = html_entity_decode(strip_tags($value), ENT_QUOTES);
+  }
+
+  natcasesort($options);
+
+  return $options;
+}
+
+/**
+ * Retrieves an array of candidate referenceable fields.
+ *
+ * This info is used in various places (allowed values, autocomplete
+ * results, input validation...).
+ *
+ * @param $field
+ *   The field definition.
+ * @param $instance
+ *   The instance (may be NULL!)
+ * @param $options
+ *   An array of options to limit the scope of the returned list. The following
+ *   key/value pairs are accepted:
+ *   - string: string to filter titles on (used by autocomplete).
+ *   - match: operator to match the above string against, can be any of:
+ *     'contains', 'equals', 'starts_with'. Defaults to 'contains'.
+ *   - ids: array of specific node ids to lookup.
+ *   - limit: maximum size of the the result set. Defaults to 0 (no limit).
+ *   - append_id: (bool) Force override of the append_id setting.
+ *   - prevent_label: (bool) Prevent a label from being built to save resources.
+ *
+ * @return
+ *   An array of options.
+ */
+function field_reference_potential_references($field, $instance, $options = array()) {
+  // Fill in default options.
+  $options = array_merge(array(
+    'string' => '',
+    'match' => 'contains',
+    'ids' => array(),
+    'limit' => 0,
+    'append_id' => $field['settings']['append_id'],
+    'prevent_label' => FALSE,
+  ), $options);
+
+  $results = &drupal_static(__FUNCTION__, array());
+
+  // Create unique id for static cache.
+  $cid = $field['field_name'] . ':' . $options['match'] . ':'
+    . ($options['string'] !== '' ? $options['string'] : implode('-', $options['ids']))
+    . ':' . $options['limit'];
+  if (!isset($results[$cid])) {
+    $references = _field_reference_potential_references_standard($field, $instance, $options);
+
+    // Store the results.
+    $results[$cid] = $references;
+  }
+
+  return $results[$cid];
+}
+
+/**
+ * Helper function for field_reference_potential_references().
+ *
+ * List of referenceable fields defined by content types.
+ */
+function _field_reference_potential_references_standard($field, $instance, $options) {
+  $references = array();
+
+  if (!empty($field['settings']['fields'])) {
+
+    $field_info_fields = field_info_fields();
+    $field_info_instances = field_info_instances();
+
+    // Get the table we need to look in.
+    $storage = FIELD_LOAD_CURRENT;
+
+    if (!empty($options['string'])) {
+      // Treat each word as a separate keyword to conjunct so we can get more specific results.
+      $keywords = explode(' ', $options['string']);
+      //$keywords = array($options['string']);
+    }
+
+    // These things will always be selected.
+    $selects = array('entity_type', 'bundle');
+
+    // These things will be juggled depending on what we need.
+    $field_selects = array();
+    if ($field['settings']['granularity']['entity']) {
+      $field_selects[] = 'entity_id';
+    }
+    if ($field['settings']['granularity']['revision']) {
+      $field_selects[] = 'revision_id';
+      $storage = FIELD_LOAD_REVISION;
+    }
+    if ($field['settings']['granularity']['language']) {
+      $field_selects[] = 'language';
+    }
+    if ($field['settings']['granularity']['value']) {
+      $field_selects[] = 'delta';
+    }
+    // This is a dummy entry in the array to allow an empty combination, it won't
+    // actually be selected.
+    $field_selects[] = NULL;
+
+    $field_select_groups = array();
+    if ($field['settings']['allow_general']) {
+      $total_field_selects = count($field_selects) * count($field_selects);
+      for ($i = 1; $i < $total_field_selects - 1; $i++) {
+        $field_select_group = array();
+        for ($j = 0; $j < $total_field_selects; $j++) {
+          if (pow(2, $j) & $i) {
+            $field_select_group[] = $field_selects[$j];
+          }
+        }
+        $field_select_groups[] = $field_select_group;
+      }
+    }
+    else {
+      $field_select_groups[] = $field_selects;
+    }
+
+    $sub_queries = array();
+    $aliases = array();
+    $entity_type_info = array();
+    $placeholder_count = 0;
+    foreach ($field['settings']['fields'] as $entity_type => $entity_type_data) {
+      if (empty($entity_type_info[$entity_type])) {
+        $entity_type_info[$entity_type] = field_reference_entity_get_info($entity_type);
+      }
+      $entity_table = $entity_type_info[$entity_type]['base table'];
+      $entity_id = $entity_type_info[$entity_type]['entity keys']['id'];
+      if (!empty($entity_type_info[$entity_type]['entity keys']['label'])) {
+        $entity_label = $entity_type_info[$entity_type]['entity keys']['label'];
+      }
+
+      foreach ($entity_type_data as $bundle => $bundle_data) {
+        foreach ($bundle_data as $field_key) {
+          foreach ($field_select_groups as $field_select_group) {
+            $storage_data = $field_info_fields[$field_key]['storage']['details']['sql'][$storage];
+            // @todo: Does this work for all cases?
+            $table = key($storage_data);
+            $sub_query = db_select($table, 'field');
+            $sub_query->condition('entity_type', $entity_type);
+            $sub_query->condition('bundle', $bundle);
+
+            $sub_query->join($entity_table, 'entity', 'field.entity_id = entity.' . $entity_id);
+            // Don't fetch the entity label, only filter on it.  Use the entity_label() function later to get the label.
+            if (isset($entity_label)) {
+              $conditions = array('conditions' => array('entity.' . $entity_label));
+            }
+
+            // Special case nodes to check node access.
+            if ($entity_type == 'node') {
+              $sub_query->addTag('node_access');
+            }
+
+            $field_label = $field_info_instances[$entity_type][$bundle][$field_key]['label'];
+            if (!trim($field_label)) {
+              $field_label = $field_key;
+            }
+
+            $ph_key = $placeholder_count++;
+            $sub_query->addExpression(':field_key' . $ph_key, 'field_key', array(':field_key' . $ph_key => $field_key));
+            $conditions['wheres'][] = "'" . $field_key . "'";
+            $sub_query->addExpression(':field_label' . $ph_key, 'field_label', array(':field_label' . $ph_key => $field_label));
+            $conditions['wheres'][] = "'" . $field_label . "'";
+
+            foreach ($selects as $select) {
+              $sub_query->addField('field', $select);
+              $conditions['conditions'][] = 'field.' . $select;
+            }
+
+            foreach ($field_selects as $select) {
+              if ($select) {
+                if (in_array($select, $field_select_group)) {
+                  //$sub_query->addField('field', $select);
+                  $sub_query->addExpression('field.' . $select, $select);
+                  $conditions['conditions'][] = 'field.' . $select;
+                }
+                else {
+                  $sub_query->addExpression(':field_reference_null', $select, array(':field_reference_null' => ''));
+                }
+              }
+            }
+
+            if (!empty($keywords)) {
+              foreach ($keywords as $keyword_position => $keyword) {
+                $keyword_condition = db_or();
+
+                foreach ($conditions as $conditions_type => $conditions_data) {
+                  foreach ($conditions_data as $condition_key => $condition) {
+                    switch ($options['match']) {
+                      case 'contains':
+                        if ($conditions_type == 'conditions') {
+                          $keyword_condition->condition($condition, '%' . $keyword . '%', 'LIKE');
+                        }
+                        elseif ($conditions_type == 'wheres') {
+                          $condition_placeholder = ':' . $conditions_type . $condition_key;
+                          $keyword_placeholder = ':' . $conditions_type . $condition_key . '_' . $keyword_position;
+                          $keyword_condition->where(
+                            $condition_placeholder . ' LIKE ' . $keyword_placeholder,
+                            array(
+                              $condition_placeholder => $condition,
+                              $keyword_placeholder => '%' . $keyword . '%',
+                            )
+                          );
+                        }
+                        break;
+
+                      case 'starts_with':
+                        if ($conditions_type == 'conditions') {
+                          $keyword_condition->condition($condition, $keyword . '%', 'LIKE');
+                        }
+                        elseif ($conditions_type == 'wheres') {
+                          $condition_placeholder = ':' . $conditions_type . $condition_key;
+                          $keyword_placeholder = ':' . $conditions_type . $condition_key . '_' . $keyword_position;
+                          $keyword_condition->where(
+                            $condition_placeholder . ' LIKE ' . $keyword_placeholder,
+                            array(
+                              $condition_placeholder => $condition,
+                              $keyword_placeholder => $keyword . '%',
+                            )
+                          );
+                        }
+                        break;
+
+                      case 'equals':
+                      default: // no match type or incorrect match type: use "="
+                        if ($conditions_type == 'conditions') {
+                          $keyword_condition->condition($condition, $keyword);
+                        }
+                        elseif ($conditions_type == 'wheres') {
+                          $condition_placeholder = ':' . $conditions_type . $condition_key;
+                          $keyword_placeholder = ':' . $conditions_type . $condition_key . '_' . $keyword_position;
+                          $keyword_condition->where(
+                            $condition_placeholder . ' = ' . $keyword_placeholder,
+                            array(
+                              $condition_placeholder => $condition,
+                              $keyword_placeholder => $keyword,
+                            )
+                          );
+                        }
+                        break;
+                    }
+                  }
+                }
+                $sub_query->condition($keyword_condition);
+              }
+            }
+            $sub_queries[] = $sub_query;
+          }
+        }
+      }
+    }
+
+    if (!empty($sub_queries)) {
+      $query = array_shift($sub_queries);
+      foreach ($sub_queries as $sub_query) {
+        $query->union($sub_query);
+      }
+
+      if (!empty($options['limit'])) {
+        $query->range(0, $options['limit']);
+      }
+
+      // Note can't do order by, see: http://drupal.org/node/1145076
+
+      $result = $query->execute();
+
+      while ($field_reference = $result->fetchAssoc()) {
+
+        // If only selecting within entity, skip fields from other entity types or bundles.
+        if (
+          !$field['settings']['granularity']['entity'] && (
+            $instance['entity_type'] != $field_reference['entity_type'] ||
+            $instance['bundle'] != $field_reference['bundle']
+          )
+        ) {
+          continue;
+        }
+
+        $key = field_reference_key_create($field_reference);
+        $label = NULL;
+        if (empty($options['prevent_label'])) {
+          $label = field_reference_label_create($field_reference);
+          if ((!empty($field['settings']['append_id']) && $options['append_id'] !== FALSE) || $options['append_id']) {
+            $label .= ' [' . $key . ']';
+          }
+        }
+        $references[$key] = $label;
+
+      }
+
+    }
+
+  }
+
+  return $references;
+}
+
+/**
+ * Menu callback for the autocomplete results.
+ */
+function field_reference_autocomplete($entity_type, $bundle, $field_name, $string = '') {
+  // If the request has a '/' in the search text, then the menu system will have
+  // split it into multiple arguments, recover the intended $string.
+  $args = func_get_args();
+  // Shift off the $entity_type argument.
+  array_shift($args);
+  // Shift off the $bundle argument.
+  array_shift($args);
+  // Shift off the $field_name argument.
+  array_shift($args);
+  $string = implode('/', $args);
+
+  $field = field_info_field($field_name);
+  $instance = field_info_instance($entity_type, $field_name, $bundle);
+
+  $options = array(
+    'string' => $string,
+    'match' => $instance['widget']['settings']['autocomplete_match'],
+    'limit' => 10,
+  );
+
+  $references = field_reference_potential_references($field, $instance, $options);
+
+  $matches = array();
+  foreach ($references as $id => $row) {
+    // If the user is not appending id's, we'll do it anyway for autocomplete purposes.
+    $appendage = !$field['settings']['append_id'] ? ' [' . $id . ']' : NULL;
+    $matches[$row . $appendage] = '<div class="reference-autocomplete">' . filter_xss($row) . '</div>';
+  }
+
+  drupal_json_output($matches);
+}
+
+/**
+ * Implements hook_node_type_update().
+ *
+ * Reflect type name changes to the 'referenceable types' settings: when
+ * the name of a type changes, the change needs to be reflected in the
+ * "referenceable types" setting for any field_reference field
+ * referencing it.
+
+function field_reference_node_type_update($info) {
+  if (!empty($info->old_type) && $info->old_type != $info->type) {
+    $fields = field_info_fields();
+    foreach ($fields as $field_name => $field) {
+      if ($field['type'] == 'field_reference' && isset($field['settings']['referenceable_types'][$info->old_type])) {
+        $field['settings']['referenceable_types'][$info->type] = empty($field['settings']['referenceable_types'][$info->old_type]) ? 0 : $info->type;
+        unset($field['settings']['referenceable_types'][$info->old_type]);
+        field_update_field($field);
+      }
+    }
+  }
+} */
+
+/**
+ * Implements hook_field_prepare_translation().
+ *
+ * When preparing a translation, load any translations of existing
+ * references.
+ * @todo Correctly implement after http://drupal.org/node/362021 is fixed.
+
+function field_reference_field_prepare_translation($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  $addition = array();
+  $addition[$field['field_name']] = array();
+  if (isset($entity->translation_source->$field['field_name'])
+  && is_array($entity->translation_source->$field['field_name'])) {
+    foreach ($entity->translation_source->$field['field_name'] as $key => $reference) {
+      $reference_node = node_load($reference['nid']);
+      // Test if the referenced node type is translatable and, if so,
+      // load translations if the reference is not for the current language.
+      // We can assume the translation module is present because it invokes 'prepare translation'.
+      if (translation_supported_type($reference_node->type)
+      && !empty($reference_node->language)
+      && $reference_node->language != $node->language
+      && $translations = translation_node_get_translations($reference_node->tnid)) {
+        // If there is a translation for the current language, use it.
+        $addition[$field['field_name']][] = array(
+          'nid' => isset($translations[$node->language])
+            ? $translations[$node->language]->nid
+            : $reference['nid'],
+        );
+      }
+    }
+  }
+
+  return $addition;
+} */
+
+/**
+ * Implements hook_options_list().
+ */
+function field_reference_options_list($field, $instance = NULL) {
+  return _field_reference_options($field, $instance);
+}
+
+/**
+ * Implements hook_field_views_data().
+ *
+ * In addition to the default field information we add the relationship for
+ * views to connect back to the node table.
+ */
+/*function field_reference_field_views_data($field) {
+
+  // No module_load_include(): this hook is invoked from
+  // views/modules/field.views.inc, which is where that function is defined.
+  $data = field_views_field_default_views_data($field);
+
+  $storage = $field['storage']['details']['sql'];
+
+  foreach ($storage as $age => $table_data) {
+    $table = key($table_data);
+    $columns = current($table_data);
+    $id_column = $columns['nid'];
+    if (isset($data[$table])) {
+      // Filter: swap the handler to the 'in' operator. The callback receives
+      // the field name instead of the whole $field structure to keep views
+      // data to a reasonable size.
+      $data[$table][$id_column]['filter']['handler'] = 'views_handler_filter_in_operator';
+      $data[$table][$id_column]['filter']['options callback'] = 'field_reference_views_options';
+      $data[$table][$id_column]['filter']['options arguments'] = array($field['field_name']);
+
+      // Argument: display node.title in argument titles (handled in our custom
+      // handler) and summary lists (handled by the base views_handler_argument
+      // handler).
+      // Both mechanisms rely on the 'name table' and 'name field' information
+      // below, by joining to a separate copy of the base table from the field
+      // data table.
+      $data[$table][$id_column]['argument']['handler'] = 'references_handler_argument';
+      $data[$table][$id_column]['argument']['name table'] = $table . '_reference';
+      $data[$table][$id_column]['argument']['name field'] = 'title';
+      $data[$table . '_reference']['table']['join'][$table] = array(
+        'left_field' => $id_column,
+        'table' => 'node',
+        'field' => 'nid',
+      );
+
+      // Relationship.
+      $data[$table][$id_column]['relationship'] = array(
+        'handler' => 'references_handler_relationship',
+        'base' => 'node',
+        'base field' => 'nid',
+        'label' => $field['field_name'],
+        'field_name' => $field['field_name'],
+      );
+    }
+  }
+
+  return $data;
+
+}*/
+
+/**
+ * Implements hook_field_views_data_views_data_alter().
+ */
+/*function field_reference_field_views_data_views_data_alter(&$data, $field) {
+
+  foreach ($field['bundles'] as $entity_type => $bundles) {
+    $entity_info = entity_get_info($entity_type);
+    $pseudo_field_name = 'reverse_' . $field['field_name'] . '_' . $entity_type;
+
+    list($label, $all_labels) = field_views_field_label($field['field_name']);
+    $entity = $entity_info['label'];
+    if ($entity == t('Node')) {
+      $entity = t('Content');
+    }
+
+    // Only specify target entity type if the field is used in more than one.
+    if (count($field['bundles']) > 1) {
+      $title = t('@field (@field_name) - reverse (to @entity)', array('@entity' => $entity, '@field' => $label, '@field_name' => $field['field_name']));
+    }
+    else {
+      $title = t('@field (@field_name) - reverse', array('@entity' => $entity, '@field' => $label, '@field_name' => $field['field_name']));
+    }
+    $data['node'][$pseudo_field_name]['relationship'] = array(
+      'title' => $title,
+      'help' => t('Relate each @entity referencing the node through @field.', array('@entity' => $entity, '@field' => $label)),
+      'handler' => 'views_handler_relationship_entity_reverse',
+      'field_name' => $field['field_name'],
+      'field table' => _field_sql_storage_tablename($field),
+      'field field' => $field['field_name'] . '_nid',
+      'base' => $entity_info['base table'],
+      'base field' => $entity_info['entity keys']['id'],
+      'label' => t('!field_name', array('!field_name' => $field['field_name'])),
+    );
+  }
+
+}*/
+
+/**
+ * Helper callback for the views_handler_filter_in_operator filter.
+ *
+ * @param $field_name
+ *   The field name.
+
+function field_reference_views_options($field_name) {
+  if ($field = field_info_field($field_name)) {
+    return _field_reference_options($field, $instance);
+  }
+  return array();
+} */
+
+/**
+ * Compose a field reference label.
+ *
+ * WARNING: This function does not sanitize output, such as node titles.
+ * Use only in form inputs or wrap printed labels in filter_xss().
+ *
+ * @param $field_reference
+ *   An associative array representing the field reference data.
+ * @return
+ *   The field reference label.
+ */
+function field_reference_label_create($field_reference) {
+  //if (!empty($field_reference['field_label'])) {
+    $label = $field_reference['field_label'];
+  //}
+  /*
+  elseif (!empty($field_reference['entity_type']) && !empty($field_reference['bundle'])) {
+    $instance = field_info_instance($field_reference['entity_type'], $field_reference['field_key'], $field_reference['bundle']);
+    $label = $instance['label'];
+  }
+  else {
+    $label = $field_reference['field_key'];
+  }
+  */
+
+
+  if (isset($field_reference['delta']) && !is_null($field_reference['delta'])) {
+    $label .= ' (' . t('value') . ' ' . ($field_reference['delta'] + 1) . ')';
+  }
+  if (!empty($field_reference['entity_label'])) {
+    $label .= ' - ' . $field_reference['entity_label'];
+  }
+  elseif (!empty($field_reference['entity_type']) && !empty($field_reference['entity_id'])) {
+    $entity_type_info = field_reference_entity_get_info($field_reference['entity_type']);
+    if (!empty($field_reference['revision_id']) && !empty($entity_type_info['entity keys']['revision'])) {
+      $field_revision_key = $entity_type_info['entity keys']['revision'];
+      $field_entities = entity_load($field_reference['entity_type'], array($field_reference['entity_id']));
+      $field_entity = reset($field_entities, array($field_revision_key => $field_reference['revision_id']));
+    }
+    else {
+      $field_entities = entity_load($field_reference['entity_type'], array($field_reference['entity_id']));
+      $field_entity = reset($field_entities);
+    }
+    $label .= ' - ' . entity_label($field_reference['entity_type'], $field_entity);
+  }
+
+  // @todo: Better revision display in label, should be like (22/08/2011 - 14:18 by bob) for nodes.
+  // No idea how to do this with anything but a special case for certain entities?
+  if (!empty($field_reference['revision_id'])) {
+    $label .= ' (' . t('revision') . ' ' . $field_reference['revision_id'] . ')';
+  }
+  if (!empty($field_reference['language'])) {
+    $label .= ' ' . strtoupper($field_reference['language']);
+  }
+  return $label;
+}
+
+/**
+ * Compose a field reference key.
+ *
+ * @param $field_reference
+ *   An associative array representing the field reference data.
+ * @return
+ *   The field reference key.
+ */
+function field_reference_key_create($field_reference) {
+  $key = $field_reference['field_key'];
+  if (isset($field_reference['delta']) && !is_null($field_reference['delta'])) {
+    $key .= ':' . $field_reference['delta'];
+  }
+  if (!empty($field_reference['entity_type']) && !empty($field_reference['entity_id'])) {
+    $key .= ' ' . $field_reference['entity_type'] . ':' . $field_reference['entity_id'];
+    if (!empty($field_reference['revision_id'])) {
+      $key .= ':' . $field_reference['revision_id'];
+    }
+  }
+  if (!empty($field_reference['language'])) {
+    $key .= ' ' . $field_reference['language'];
+  }
+  return $key;
+}
+
+/**
+ * Decode a field reference key.
+ *
+ * @param $key
+ *   The field reference key.
+ * @return
+ *   An associative array representing the field reference data.
+ */
+function field_reference_key_read($key) {
+  $field_reference = array();
+  $key_parts = explode(' ', $key);
+  if (!empty($key_parts[0])) {
+    $field_key_parts = explode(' ', $key_parts[0]);
+    if (!empty($field_key_parts[0])) {
+      $field_reference['field_key'] = $field_key_parts[0];
+    }
+    if (!empty($field_key_parts[1])) {
+      $field_reference['delta'] = $field_key_parts[1];
+    }
+  }
+  if (!empty($key_parts[1])) {
+    $entity_key_parts = explode(':', $key_parts[1]);
+    if (!empty($entity_key_parts[0])) {
+      $field_reference['entity_type'] = $entity_key_parts[0];
+    }
+    if (!empty($entity_key_parts[1])) {
+      $field_reference['entity_id'] = $entity_key_parts[1];
+    }
+    if (!empty($entity_key_parts[2])) {
+      $field_reference['revision_id'] = $entity_key_parts[2];
+    }
+  }
+  if (!empty($key_parts[2])) {
+    $field_reference['language'] = $key_parts[2];
+  }
+  return $field_reference;
+}
+
+/**
+ * Get data about supported entity types.
+ *
+ * http://drupal.org/node/1367490
+ */
+function field_reference_entity_get_info($entity_type = NULL) {
+  $entity_info = entity_get_info($entity_type);
+  if ($entity_type == 'user') {
+    $entity_info['entity keys']['label'] = 'name';
+  }
+  elseif (!empty($entity_info['user'])) {
+    $entity_info['user']['entity keys']['label'] = 'name';
+  }
+  return $entity_info;
+}

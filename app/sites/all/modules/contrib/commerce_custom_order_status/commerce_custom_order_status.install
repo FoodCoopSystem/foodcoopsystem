@@ -1,0 +1,59 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function commerce_custom_order_status_schema() {
+
+  $schema['commerce_custom_order_status'] = array(
+    'description' => t('Stores order statuses'),
+    'fields' => array(
+      'name' => array(
+        'description' => t('The status name'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'title' => array(
+        'description' => t('The status title'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'state' => array(
+        'description' => t('The state of the status'),
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'cart' => array(
+        'description' => t('Is this a cart status'),
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'weight' => array(
+        'description' => t('Weight relative to other statuses'),
+        'type' => 'int',
+        'size' => 'normal',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'status' => array(
+        'description' => t('Is this enabled'),
+        'type' => 'int',
+        'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'primary key' => array('name'),
+  );
+
+  return $schema;
+
+} // commerce_custom_order_status_schema

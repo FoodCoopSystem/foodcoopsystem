@@ -1,0 +1,35 @@
+<?php
+/**
+ * @file
+ * Commerce Extra functionality.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_extra_menu() {
+  $items = array();
+
+  // Settings
+  $items['admin/commerce/config/commerce_extra'] = array(
+    'title' => 'Commerce Extra settings',
+    'description' => 'Enable/disable and configure extra features.',
+    'file' => 'commerce_extra.admin.inc',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_extra_settings'),
+    'access arguments' => array('administer commerce_extra'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function commerce_extra_permission() {
+  return array(
+    'administer commerce_extra' => array(
+      'title' => t('Administer Commerce Extra'),
+    ),
+  );
+}

@@ -1,0 +1,203 @@
+<?php
+
+/**
+ * @file
+ * User Relationships Elaborations feature
+ * @author Jeff Smick (creator)
+ * @author Darren Ferguson http://drupal.org/user/70179
+ */
+
+/**
+ * Save an elaboration to the DB
+ *
+ * @param $rid
+ *    an integer, the relationship ID
+ * @param $elaboration
+ *    a string version of the elaboration. if you're only using the API side of this
+ *    you could easily serialize the data
+ *
+ * @return
+ *    An elaboration object or FALSE if the save was not successful
+ */
+function user_relationships_save_elaboration($rid, $elaboration) {
+  $record = array(
+    'rid'         => $rid,
+    'elaboration' => $elaboration,
+  );
+
+  //#456056 need to check if a record already exists, and update. do not assume there is no such rid
+  $existing_rid = db_query("SELECT rid FROM {user_relationship_elaborations} WHERE rid = :rid", array(':rid' => $rid))->fetchField();
+  return drupal_write_record('user_relationship_elaborations', $record, ($existing_rid ? array('rid') : array()));
+}
+
+/**
+ * Delete an elaboration from the DB
+ *
+ * @param $rid
+ *    an integer, the relationship ID
+ */
+function user_relationships_delete_elaboration($rid) {
+  db_delete('user_relationship_elaborations')
+    ->condition('rid', $rid)
+    ->execute();
+}
+
+/**
+ * Retrieve an elaboration from the DB
+ *
+ * @param $rid
+ *    an integer, the relationship ID
+ */
+function user_relationships_get_elaboration($rid) {
+  return db_query("SELECT elaboration FROM {user_relationship_elaborations} WHERE rid = :rid", array(':rid' => $rid))->fetchField();
+}
+
+/**
+ * Implements hook_user_relationships_delete().
+ */
+function user_relationship_elaborations_user_relationships_delete($relationship, $action) {
+  db_delete('user_relationship_elaborations')
+    ->condition('rid', $relationship->rid)
+    ->execute();
+}
+
+/**
+ * Implements hook_user_relationships_load()
+ */
+function user_relationship_elaborations_user_relationships_load($relationships) {
+  $rids = array();
+  // Collect rids from the array.
+  _user_relationship_elaborations_walk_recursive('find_rids', $relationships, $rids);
+
+  if ($rids) {
+    // Load elaboration data into these relationships.
+    $elaborations = db_query('SELECT rid, elaboration FROM {user_relationship_elaborations} WHERE rid IN (:rids)', array(':rids' => $rids))->fetchAllKeyed();
+    _user_relationship_elaborations_walk_recursive('load', $relationships, $elaborations);
+  }
+}
+
+/**
+ * array_walk_recursive doesn't pass extra data by reference (lame!) so
+ * we have to take care of it ourselves
+ */
+function _user_relationship_elaborations_walk_recursive($action, &$relationships, &$data) {
+  foreach ($relationships as $relationship) {
+    if (is_array($relationship)) {
+      _user_relationship_elaborations_walk_recursive($action, $relationship, $data);
+    }
+    else {
+      if ($action == 'find_rids') {
+        if (isset($relationship->rid)) {
+          $data[$relationship->rid] = $relationship->rid;
+        }
+      }
+      else {
+        $relationship->elaboration = isset($data[$relationship->rid]) ? $data[$relationship->rid] : NULL;
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_user_relationships_ui_table_header_alter().
+ */
+function user_relationship_elaborations_user_relationships_ui_table_header_alter(&$header) {
+  $insert_index = array_search(t('Relationship'), $header) + 1;
+  $header = array_merge(array_slice($header, 0, $insert_index), array(t('Comments')), array_slice($header, $insert_index));
+}
+
+/**
+ * Implements hook_user_relationships_ui_table_header_alter().
+ */
+function user_relationship_elaborations_user_relationships_ui_table_row_alter(&$row, $relationship) {
+  $insert_index = variable_get('user_relationships_show_user_pictures', 0) + 2;
+  $row = array_merge(array_slice($row, 0, $insert_index), array($relationship->elaboration), array_slice($row, $insert_index));
+}
+
+/**
+ * hook_form_alter() to catch the approval form
+ */
+function user_relationship_elaborations_form_alter(&$form, $form_state, $form_id) {
+
+  switch ($form_id) {
+    case 'user_relationships_ui_pending_requested':
+      if (!variable_get('user_relationships_elaborations_api_only', FALSE)) {
+        $form['elaboration'] = array(
+          '#type'           => 'textarea',
+          '#title'          => t('Comments'),
+          '#default_value'  => isset($form_state['values']['elaboration']) ? $form_state['values']['elaboration'] : user_relationships_get_elaboration($form['rid']['#value']),
+          '#description'    => t('Add more details about your relationship. Both parties will be able to view these comments.')
+        );
+        $form['#submit'][] = 'user_relationship_elaborations_submit';
+      }
+      break;
+
+    case 'user_relationships_admin_settings':
+      $form['user_relationships_elaborations'] = array(
+        '#type'   => 'fieldset',
+        '#title'  => t('Elaborations'),
+        '#weight' => 0,
+        '#group' => 'settings',
+      );
+      $form['user_relationships_elaborations']['user_relationships_elaborations_api_only'] = array(
+        '#type'           => 'checkbox',
+        '#title'          => t('Do not use the elaborations UI'),
+        '#description'    => t('Check this if you only need the API provided by the UR-Elaborations module'),
+        '#default_value'  => variable_get('user_relationships_elaborations_api_only', FALSE),
+      );
+      break;
+
+    case 'user_relationships_ui_request':
+      // In case the form is an error form which the UI module has encountered
+      if (!isset($form['error']) && !variable_get('user_relationships_elaborations_api_only', FALSE)) {
+        // Make sure that the select box holding the relationship types is above the elaboration textarea.
+        $form['rtid']['#weight'] = -10;
+        // Adding text area to elaborate when creating a new relationship with another user.
+        $form['elaboration'] = array(
+          '#type' => 'textarea',
+          '#title' => t('Comments'),
+          '#rows' => 3,
+          '#cols' => 50,
+          '#description' => t('Add more details about your relationship. Both parties will be able to view these comments.'),
+          '#weight' => 5,
+        );
+        $form['#submit'][] = 'user_relationship_elaborations_request_submit';
+      }
+      break;
+  }
+}
+
+/**
+ * process the submitted form and save the new record
+ */
+function user_relationship_elaborations_submit($form, &$form_state) {
+  user_relationships_delete_elaboration($form_state['values']['rid']);
+  user_relationships_save_elaboration($form_state['values']['rid'], $form_state['values']['elaboration']);
+}
+
+/**
+ * Submit handler to store the elaboration for the relationship
+ */
+function user_relationship_elaborations_request_submit($form, &$form_state) {
+
+  // If an elaboration has been entered we should retrieve the relationship that has just been
+  // Created between the two users and associate the elaboration text with the relationship id
+  if (drupal_strlen($form_state['values']['elaboration'])) {
+    $requester = $form_state['values']['requester'];
+    $requestee = $form_state['values']['requestee'];
+    $relationships = user_relationships_load(array('between' => array($requester, $requestee), 'rtid' => $form_state['values']['rtid']));
+    foreach ($relationships as $relationship) {
+      user_relationships_save_elaboration($relationship->rid, $form_state['values']['elaboration']);
+    }
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function user_relationship_elaborations_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'user_relationship_elaborations'),
+  );
+}

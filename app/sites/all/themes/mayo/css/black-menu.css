@@ -1,0 +1,151 @@
+
+#menubar, /* for nice_menus, superfish */
+#navigation,
+#preview #preview-navigation {
+  background: url('../images/black-menu.png') repeat center left;
+  border-bottom-width: 0px;
+  padding: 4px 4px 4px 8px;
+}
+#submenubar {
+  padding: 2px 4px 2px 8px;
+}
+
+#navigation ul li,
+#preview #preview-navigation ul li {
+  border-right-color: #333;
+}
+#navigation ul li a,
+#preview #preview-navigation ul li a {
+  color: #ddd;
+  font-weight: normal;
+  font-size: small;
+}
+#navigation ul li a:hover,
+#preview #preview-#navigation ul li a:hover {
+  color: #fff;
+  background-color: #444;
+  text-decoration: none;
+}
+#navigation ul.main-menu li:hover,
+#navigation ul.main-menu li a:hover {
+  color: #fff;
+  background-color: #444;
+  background: #444;
+  text-decoration: none;
+}
+#navigation ul li a:hover { /* needed for IE */
+  color: #fff;
+  background: #444;
+  text-decoration: none;
+}
+
+/*--------------- superfish ----------------*/
+#menubar .sf-menu li a {
+  background: #000 url('../images/black-menu.png') repeat center left;
+  border-right-color: #333;
+  color: #ddd;
+  font-weight: normal;
+}
+#menubar .sf-menu li ul li a {
+  background: #000;
+}
+#menubar .sf-menu li.last ul li a,
+#menubar .sf-menu li ul li a,
+#menubar .sf-menu li ul li.last a {
+  border-color: #333;
+  background-color: #000;
+}
+#menubar .sf-menu li a:hover,
+#menubar .sf-menu li.last a:hover {
+  color: #fff;
+  text-decoration: none;
+  background: #444;
+}
+#menubar .sf-menu ul {
+  border-color: #333;
+}
+
+/*-------------- nice_menus -----------------*/
+#menubar ul.nice-menu {
+  z-index: 99; /* makes drop down menu item for the menubar comes front of sub menubar */
+  background: url('../images/black-menu.png') repeat center left;
+}
+#menubar .nice-menu a,
+#menubar .nice-menu a:active,
+#menubar .nice-menu a:visited,
+#menubar .nice-menu a:focus {
+  color: #ddd;
+}
+#menubar .nice-menu a:hover {
+  color: #fff;
+  text-decoration: none;
+}
+#menubar ul.nice-menu li a {
+  /* root menu items */
+  background: url('../images/black-menu.png') repeat center left;
+}
+
+#menubar ul.nice-menu li ul li.menuparent a,
+#menubar ul.nice-menu li ul li.menuparent a:hover,
+#menubar ul.nice-menu li ul li.menuparent:hover,
+#menubar ul.nice-menu li ul li.menuparent {
+  /* drop down menu item that has child menu */
+  background-image: url('../images/arrow-right-lite.png');
+  background-repeat: no-repeat;
+  background-position: 95%;
+}
+#menubar ul.nice-menu li ul li.menuparent li a {
+  background-image: none; /* do not delete! */
+}
+#menubar ul.nice-menu li.menuparent li a {
+  background-image: none; /* do not delete! */
+  background-color: #000;
+}
+#menubar ul.nice-menu li.menuparent li {
+  background-image: none; /* do not delete! */
+  background-color: #000;
+}
+#menubar ul.nice-menu li ul li.menuparent li a:hover {
+  background-image: none; /* do not delete! */
+  background: #444;
+}
+
+#menubar ul.nice-menu li.menuparent {
+  /* root menu item that has drop down menu */
+  background: url('../images/black-menu.png') repeat center left;
+}
+#menubar ul.nice-menu li.menuparent a {
+  /* root menu item that has drop down menu */
+  background-image: url('../images/arrow-down-lite.png');
+  background-repeat: no-repeat;
+  background-position: 90%;
+}
+#menubar ul.nice-menu li a {
+  /* root menu item that has no drop down menu */
+  border-right-color: #333;
+}
+#menubar ul.nice-menu li.last ul li a,
+#menubar ul.nice-menu li ul li a,
+#menubar ul.nice-menu li ul li.last a {
+  /* drop down menu items */
+  border-color: #333;
+  background: #000;
+}
+
+#menubar ul.nice-menu li a:hover,
+#menubar ul.nice-menu li.menuparent a:hover {
+  /* root menu item hover color */
+  background: #444;
+}
+#menubar ul.nice-menu li.menuparent a:hover {
+  /* root menu item that has drop down menu */
+  background-image: url('../images/arrow-down-lite.png');
+  background-repeat: no-repeat;
+  background-position: 90%;
+}
+#menubar ul.nice-menu li.menuparent li a:hover {
+  background-image: none;
+}
+#menubar ul.nice-menu li ul {
+  border: solid 1px #333;
+}

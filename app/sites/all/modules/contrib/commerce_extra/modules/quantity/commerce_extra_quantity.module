@@ -1,0 +1,96 @@
+<?php
+/**
+ * @file
+ *   Contains Commerce Quantity Plus-Minus module's functionality.
+ */
+
+define('COMMERCE_EXTRA_QUANTITY_INCREASE', 1);
+define('COMMERCE_EXTRA_QUANTITY_DECREASE', -1);
+
+/**
+ * Implements hook_form_alter().
+ * Adds additional theme wrappers for add to cart's quantity textfields.
+ */
+function commerce_extra_quantity_form_alter(&$form, &$form_state, $form_id) {
+
+  // Add to cart form from field api
+  $str = 'commerce_cart_add_to_cart_form_';
+  if (drupal_substr($form_id, 0, drupal_strlen($str)) == $str) {
+    if (isset($form['quantity']) && $form['quantity']['#type'] == 'textfield') {
+      $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';
+      $form['#attached']['css'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.css';
+      $form['quantity']['#theme_wrappers'] = array('quantity_plusminus_wrapper', 'form_element');
+    }
+  }
+
+  // Quantity fields from views
+  if ($form_id == 'views_form_commerce_cart_form_default') {
+    if (isset($form['edit_quantity'])) {
+      $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';
+      $form['#attached']['css'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.css';
+      foreach ($form['edit_quantity'] as $key => $value) {
+        if (is_numeric($key) && drupal_substr($key, 0, 1) != '#' && is_array($value)) {
+          $form['edit_quantity'][$key]['#theme_wrappers'] = array('quantity_plusminus_wrapper', 'form_element');
+        }
+      }
+    }
+  }
+
+}
+
+/**
+ * Implements hook_theme().
+ */
+function commerce_extra_quantity_theme($existing, $type, $theme, $path) {
+  return array(
+    'quantity_plusminus_wrapper' => array(
+      'render element' => 'form',
+    ),
+    'quantity_plusminus_link' => array(
+      'variables' => array('way' => NULL, 'quantity' => NULL, 'quantity_input_element' => NULL),
+    ),
+  );
+}
+
+/**
+ * Returns HTML for quantity textfield having links wrapping the textfield.
+ */
+function theme_quantity_plusminus_wrapper($variables) {
+  $decrease = theme('quantity_plusminus_link', array('way' => COMMERCE_EXTRA_QUANTITY_DECREASE, 'quantity' => $variables['form']['#value'], 'quantity_input_element' => $variables['form']['#id']));
+  $increase = theme('quantity_plusminus_link', array('way' => COMMERCE_EXTRA_QUANTITY_INCREASE, 'quantity' => $variables['form']['#value'], 'quantity_input_element' => $variables['form']['#id']));
+  return $decrease . $variables['form']['#children'] . $increase;
+}
+
+/**
+ * Returns HTML for link which increases/decreases quantity value.
+ */
+function theme_quantity_plusminus_link($variables) {
+  switch ($variables['way']) {
+    case COMMERCE_EXTRA_QUANTITY_DECREASE:
+      $text = '-';
+      $class = 'commerce-quantity-plusminus-link-decrease';
+      $js_callback = "Drupal.commerce_extra_quantity_quantity('#" . $variables['quantity_input_element'] . "', " . $variables['way'] . ")";
+      break;
+    case COMMERCE_EXTRA_QUANTITY_INCREASE:
+      $text = '+';
+      $class = 'commerce-quantity-plusminus-link-increase';
+      $js_callback = "Drupal.commerce_extra_quantity_quantity('#" . $variables['quantity_input_element'] . "', " . $variables['way'] . ")";
+      break;
+  }
+  if ($variables['quantity'] <= 0) {
+    $class .= ' commerce-quantity-plusminus-link-disabled';
+  }
+  $options = array(
+    'attributes' => array('class' => 'button', 'onclick' => $js_callback . '; return false;'),
+    'html' => FALSE,
+  );
+  $element = array(
+    '#theme' => 'link',
+    '#text' => $text,
+    '#path' => current_path(),
+    '#options' => $options,
+    '#prefix' => '<span class="commerce-quantity-plusminus-link ' . $class . '">',
+    '#suffix' => '</span>',
+  );
+  return render($element);
+}

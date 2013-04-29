@@ -1,0 +1,36 @@
+<?php
+/**
+ * @file
+ * Install for the Commerce VBO Views feature.
+ */
+
+
+/**
+ * Implements hook_enable().
+ *
+ * Disable the defaults views provided by commerce.
+ */
+function commerce_vbo_views_enable() {
+  $views_to_disable = variable_get('commerce_vbo_views_views_to_disable', array('commerce_products', 'commerce_orders', 'commerce_customer_profiles'));
+  $status = variable_get('views_defaults', array());
+  foreach ($views_to_disable as $name) {
+    $status[$name] = TRUE;
+  }
+  variable_set('views_defaults', $status);
+  drupal_set_message(t('Commerce VBO Views disabled these default views and replaced them with its own: %views', array('%views' => implode(', ', $views_to_disable))));
+}
+
+/**
+ * Implements hook_disable().
+ *
+ * Re-enable the defaults views provided by commerce.
+ */
+function commerce_vbo_views_disable() {
+  $views_to_disable = variable_get('commerce_vbo_views_views_to_disable', array('commerce_products', 'commerce_orders', 'commerce_customer_profiles'));
+  $status = variable_get('views_defaults', array());
+  foreach ($views_to_disable as $name) {
+    $status[$name] = FALSE;
+  }
+  variable_set('views_defaults', $status);
+  drupal_set_message(t('Commerce VBO Views re-enabled these default Commerce views: %views', array('%views' => implode(', ', $views_to_disable))));
+}

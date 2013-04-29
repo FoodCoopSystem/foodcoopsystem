@@ -1,0 +1,844 @@
+
+* {
+  margin: 0;
+  padding: 0;
+}
+body {
+  font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', Baskerville, serif;
+  line-height: 1.5em;
+  font-size: 87.5%; /* = 14px assuming browser's regular font size is 16px */
+}
+ul {
+  margin: 0;
+  padding: 0;
+  list-style-type: disc;
+  margin-left: 10px;
+}
+ol {
+  margin: 0;
+  padding: 0;
+  margin-left: 10px;
+}
+a {
+  text-decoration: none;
+}
+a:hover, a:active, a:focus {
+  text-decoration: underline;
+}
+em {
+  font-style: italic;
+}
+/* p,a,strong,em,li,dl,dt { */
+p,li,dl,dt {
+  margin: 6px 0;
+  line-height: 1.5em;
+}
+dd {
+  margin-left: 2.5em;
+}
+table {
+  width: 100%;
+  margin: 4px 0px;
+}
+h1 {
+  font-size: 1.4em;
+}
+h2 {
+  font-size: 1.3em;
+}
+h3 {
+  font-size: 1.2em;
+}
+h4 {
+  font-size: 1.15em;
+}
+h5 {
+  font-size: 1em;
+}
+fieldset {
+  border-width: 1px;
+  border-style: solid;
+}
+#site-name, #site-slogan {
+  font-family: Georgia, 'Palatino Linotype', 'Book Antiqua', 'URW Palladio L', Baskerville, serif;
+}
+
+/*------- end of default section --------*/
+
+.spacer {
+  display: block;
+  margin-top: 10px;
+}
+
+/**
+ * Header
+ */
+#header {
+  padding: 0px;
+  display: block;
+  border-style: solid;
+  border-width: 1px;
+  overflow: hidden;
+}
+#header-watermark {
+  margin: 0;
+  padding: 0;
+  height: 200px;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-position: top center;
+}
+div#logo {
+  float: left;
+}
+#name-and-slogan {
+  float: left;
+}
+#site-name a,
+#header h1 a,
+#header h1 a:link,
+#header h1 a:visited {
+  font-weight: 800;
+  text-decoration: none;
+  line-height: 1em;
+  font-size: 34px; /* we do not want it changed by text scaling */
+}
+#site-slogan {
+  font-weight: normal;
+  font-style: italic;
+  margin-bottom: 5px;
+  font-size: 15px; /* we do not want it changed by text scaling */
+  line-height: 1em;
+}
+
+/**
+ * Footer
+ */
+#footer-wrapper {
+  text-align: center;
+  clear: both;
+  display: block;
+  margin: 0px;
+  padding: 10px;
+  font-size: 0.9em;
+  font-weight: normal;
+}
+#footer-wrapper .column-block {
+  border-style: solid;
+  border-width: 0px;
+}
+#footer-wrapper .column-block h2 {
+  font-size: 1.5em;
+}
+#footer .block {
+  margin: 5px 0px;
+}
+
+/**
+ * Menu bar (for sub menus)
+ */
+#submenubar,
+#menubar {
+  padding: 0px;
+  margin: 0px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  padding: 4px 0px;
+}
+#submenubar ul,
+#menubar ul {
+  padding: 0px;
+  margin: 0px;
+}
+
+/**
+ * Top menus (#main-menu, #secondary-menu)
+ */
+#navigation {
+  margin: 0px;
+  padding: 4px 0px 4px 4px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  overflow: hidden;
+}
+#navigation ul {
+  margin: 0px;
+  padding: 0px;
+  list-style: none;
+}
+#navigation ul li {
+  margin: 0px;
+  padding: 0px;
+  margin-right: 0px;
+  padding: 2px 4px 2px 0px;
+  border-right-style: solid;
+  border-right-width: 1px;
+}
+#navigation ul li.active {
+}
+#navigation ul li a {
+  padding: 2px 4px;
+  font-weight: normal;
+  font-size: 0.9em;
+}
+#navigation ul li a:hover {
+}
+#navigation #main-menu {
+  margin: 0;
+  padding: 0px;
+  float: left;
+}
+#navigation #secondary-menu {
+  margin: 0;
+  padding: 0px;
+  float: right;
+}
+
+/**
+ * Banner area (#banner-top, #banner-bottom)
+ */
+.banner p {
+  padding: 0px;
+  margin: 0px;
+}
+#banner-top,
+#banner-bottom {
+  padding: 0px;
+  border: none;
+  width: 100%;
+}
+
+/**
+ * Highlighted
+ */
+#highlighted .block {
+  margin-bottom: 10px;
+}
+
+.column-block {
+  font-size: 0.9em;
+  margin: 0px;
+  border-style: solid;
+  border-width: 1px;
+}
+.column-block h2 {
+  font-size: 1.25em;
+  line-height: 1em;
+  padding: 2px 0px;
+  margin: 0px 0px 3px 0px;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+
+/**
+ * Sidebar
+ */
+.sidebar * {
+  padding: 0;
+  margin: 0;
+  line-height: 1.6em;
+}
+.sidebar .block {
+  padding: 5px 10px;
+  font-size: 0.9em;
+  margin-bottom: 10px;
+  border-style: solid;
+  border-width: 1px;
+}
+.column-block h2,
+.sidebar h2 {
+  background: transparent;
+  line-height: 1em;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  margin: 4px 0px 2px 0px;
+  padding: 2px 0px;
+  font-size: 1.25em;
+}
+.column-block .content,
+.sidebar .block .content {
+  padding: 5px 2px;
+  /*overflow: hidden; Removed for Superfish */
+}
+
+.column-block table tr th,
+.sidebar .block table tr th {
+  border-style: solid;
+  border-width: 0px;
+  padding: 0px 4px;
+  background: none;
+  border-bottom-width: 3px;
+}
+.column-block table tr td,
+.sidebar .block table tr td {
+  padding: 2px 4px;
+  border-style: solid;
+  border-width: 0px;
+  border-bottom-width: 1px;
+  background: none;
+}
+
+.sidebar .block ul {
+  margin: 0px;
+  padding: 0px;
+}
+.sidebar .block ul.links {
+  margin-top: 10px;
+  text-align: right;
+}
+.sidebar .block ul.links li {
+  display: inline;
+  margin-left: 15px;
+}
+.sidebar .block .menu {
+  padding-left: 10px;
+  padding-bottom: 5px;
+}
+
+/**
+ * Page
+ */
+#breadcrumb {
+  font-size: 1em;
+  font-style: italic;
+  padding-left: 5px;
+}
+
+#breadcrumb a {
+  font-size: 1em;
+  font-style: italic;
+}
+
+#page-title {
+  padding: 4px 8px;
+  font-size: 1.3em;
+  margin-bottom: 10px;
+}
+#content .block h2 { /* main content: block title */
+  padding: 4px 8px;
+  font-size: 1.25em;
+}
+.action-links {
+  padding-left: 10px;
+}
+
+/**
+ * Pager
+ */
+div.item-list .pager {
+  border: none;
+  padding: 0px;
+}
+div.item-list ul.pager {
+  margin: 10px 0px;
+  margin-top: 10px;
+  padding: 1px 0px;
+  overflow: hidden;
+  list-style-type: none;
+}
+div.item-list ul.pager li {
+  display: inline;
+  margin: 0px;
+  padding: 0px;
+  line-height: 1em;
+  padding: 2px 0px;
+}
+div.item-list ul.pager li.pager-current {
+  padding: 2px 8px;
+}
+
+div.item-list ul.pager li a {
+  margin: 0px;
+  padding: 2px 8px;
+}
+
+/**
+ * tabs
+ */
+div.tabs .secondary,
+div.tabs .primary {
+  border: none;
+  padding: 0px;
+  margin: 8px 0px;
+  margin: 8px 0px 0px 0px;
+  list-style-type: none;
+}
+ul.secondary li,
+ul.primary li {
+  padding: 2px 0px;
+  margin: 0px;
+  line-height: 1em;
+}
+ul.secondary li a,
+ul.primary li a {
+  margin: 0px;
+  padding: 2px 8px;
+  background: transparent;
+}
+
+div.tabs .secondary,
+div.tabs .primary {
+  margin-bottom: 10px;
+}
+
+div.tabs .secondary li a,
+div.tabs .primary li a {
+  border-width: 1px;
+}
+
+div.tabs .secondary li a.active,
+div.tabs .primary li a.active {
+  background: url('../images/dark.png') repeat top left;
+}
+
+div.tabs ul.secondary li a {
+  font-size: 0.85em;
+  margin: 0px;
+}
+div.tabs ul.secondary li {
+  border-style: solid;
+  border-width: 1px;
+  padding: 0px;
+  margin-bottom: 2px;
+}
+
+/**
+ * node
+ */
+.node {
+  margin: 0;
+  padding: 15px 12px 10px 14px;
+  margin-bottom: 10px;
+
+  border-style: solid;
+  border-width: 1px;
+}
+.node-sticky {
+  border-width: 0px;
+}
+
+#content .node h2 { /* main content: node title */
+  padding: 0px;
+  background: transparent;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  font-size: 1.45em;
+}
+
+.node .submitted {
+  font-size: 0.75em;
+}
+
+.node ul,
+.node ol {
+  padding-left: 15px;
+}
+.node ul.links {
+  padding: 0px;
+  font-size: 0.75em;
+  float: right;
+  clear: both;
+}
+.node .user-picture {
+  float: right;
+  padding: 0px 0px 10px 10px;
+  background-color: inherit;
+}
+
+/**
+ * Comment
+ */
+.comment {
+  padding: 8px 10px;
+  margin-bottom: 10px;
+  border-style: solid;
+  border-width: 1px;
+}
+.comment-unpublished {
+  background: url(../images/unpublished.png) repeat top right;
+}
+.comment-spam {
+  background: url(../images/spam.png) repeat top right;
+}
+.comment h3 {
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+#comments h2.title {
+  margin-bottom: 5px;
+  font-size: 1.3em;
+}
+.comment .submitted {
+  font-size: 0.75em;
+}
+.comment ul.links {
+  padding: 0px;
+  font-size: 0.75em;
+  float: right;
+  clear: both;
+}
+.comment .user-picture {
+  float: right;
+  padding: 4px 0px 10px 10px;
+  background-color: inherit;
+}
+
+/**
+ * User profile
+ */
+.profile .user-picture {
+  margin: 0px;
+  padding: 5px;
+}
+
+/**
+ * Search block form
+ * - no 'submit' button
+ * - add search magnifier image
+ * - use javascript to show prompt
+ */
+.form-item-search-block-form .form-text:focus {
+  /*outline: none; */  /* remove blue outline for Safari */
+}
+.form-item-search-block-form .form-text {
+  height: 24px;
+  color: #555555;
+  margin: 0px;
+  border: solid 1px #aaa;
+  border-bottom-color: #ddd;
+  border-right-color: #ddd;
+  margin-top: 1px;
+  background: #fff url(../images/search.png) no-repeat 2px center;
+  padding: 0px 4px 0px 4px;
+  padding-left: 24px; /* space for magnifying glass */
+}
+#header .form-item-search-block-form {
+  float: right;
+  margin: 0px;
+}
+#header-searchbox {
+  float: right;
+  overflow: hidden;
+}
+
+/**
+ * Form
+ */
+.pushbutton, button, .form-submit {
+  margin: 2px;
+  padding: 2px 10px;
+  color: #555555;
+  cursor: pointer;
+  font-size: 0.9em;
+  border: solid 1px #888888;
+  background: #fff url(../images/button.gif) repeat-x center;
+}
+.pushbutton:hover, button:hover, .form-submit:hover {
+  color: #111111;
+  border: solid 1px #666666;
+  background: #fff url(../images/button-o.gif) repeat-x center;
+}
+
+/**
+ * Font resize controls
+ */
+#header-fontsizer {
+  float: right;
+  margin: 0;
+  margin-right: 20px;
+  padding: 0px;
+  border-width: 0px;
+  line-height: 1.2em;
+
+}
+.decreaseFont {
+  padding-right: 22px;
+  padding-bottom: 25px;
+  background: url('../images/fontsizer-1.png') no-repeat top left;
+  margin-right: 1px;
+}
+.resetFont {
+  padding-right: 21px;
+  padding-bottom: 25px;
+  background: url('../images/fontsizer-2.png') no-repeat top left;
+}
+.increaseFont {
+  padding-right: 23px;
+  padding-bottom: 25px;
+  background: url('../images/fontsizer-3.png') no-repeat top left;
+  margin-left: 1px;
+}
+.decreaseFont:hover {
+  background: url('../images/fontsizer-1-o.png') no-repeat top left;
+}
+.resetFont:hover {
+  background: url('../images/fontsizer-2-o.png') no-repeat top left;
+}
+.increaseFont:hover {
+  background: url('../images/fontsizer-3-o.png') no-repeat top left;
+}
+#header-fontsizer a,
+#header-fontsizer a:visited,
+#header-fontsizer a:focus,
+#header-fontsizer a:active {
+ /* suppress dotted frame around the links for IE */
+ border: none;
+ outline: none;
+}
+
+/**
+ * Other
+ */
+table.views-view-grid tr td {
+  padding: 15px;
+}
+.filter-wrapper {
+  border: none;
+  margin-top: 5px;
+  padding: 5px;
+  font-size: 0.9em;
+}
+.filter-wrapper ul li {
+  margin-left: 10px;
+}
+.field-type-taxonomy-term-reference {
+  font-size: 0.8em;
+  overflow: hidden;
+  margin-bottom: 0.5em;
+}
+.field-type-taxonomy-term-reference .field-label {
+  float: left;
+  overflow: hidden;
+}
+.field-type-taxonomy-term-reference .field-items {
+  overflow: hidden;
+}
+.field-type-taxonomy-term-reference .field-items .field-item {
+  float: left;
+  margin: 0 0.6em;
+  padding: 0px;
+}
+.field-type-text-with-summary {
+  clear: left; /* do not use 'both' */
+}
+
+table tr {
+  border-style: solid;
+  border-width: 0px;
+}
+table tr td {
+  padding: 4px 6px;
+  border-style: solid;
+  border-width: 0px;
+}
+table tr th {
+  border-style: solid;
+  padding: 4px 6px;
+  border-width: 0px;
+  border-right-width: 1px;
+}
+table thead * {
+  padding: 2px 3px;
+  border-bottom: none;
+  border-width: 0px;
+}
+table tbody {
+  border-width: 0px;
+}
+table.sticky-enabled tr td {
+  padding: 2px 3px;
+  border-style: solid;
+  border-width: 0px;
+}
+tr.even td.active,
+tr.odd td.active {
+  background-image: url('../images/dark.png');
+}
+tr.even,
+tr.odd {
+  border-width: 0px;
+}
+
+.field-label-inline .field-label {
+  width: 64px;
+}
+blockquote {
+  padding: 0px 10px;
+  border-left-style: solid;
+  border-left-width: 5px;
+  font-style: italic;
+}
+
+/**
+ * Superfish menu
+ */
+.sf-menu li a {
+  /* root menu items */
+  font-size: 0.9em;
+  padding: 2px 8px;
+  border: none;
+  border-right-style: solid;
+  border-right-width: 1px;
+  /* background-color is set by colors.css */
+  /* border-right-color is set by colors.css */
+  font-weight: normal;
+}
+.sf-menu li.last a {
+  /* last item of the root menu */
+  border-right: none;
+}
+.sf-menu li.last ul li a,
+.sf-menu li ul li a,
+.sf-menu li ul li.last a {
+  /* all other child menu items */
+  border-style: solid;
+  border-width: 1px;
+  /* border-color is set by colors.css */
+}
+.sf-menu li.menuparent a {
+  /* item with child menu - adding some spaces for arrows */
+  padding: 8px 19px 2px 8px;  /* Added 6px at top for alignment*/
+}
+.sf-menu li a.sfHover,
+.sf-menu li a:hover {
+  /* background-color is set by colors.css */
+}
+.sf-menu li:hover ul,
+.sf-menu li.sfHover ul {
+  top: 2.8em;  /* Added 1.0em to bring down child items */
+}
+.sf-sub-indicator {
+  background: url('../images/sf-arrows.png') no-repeat -10px -110px;
+}
+a > .sf-sub-indicator {
+  top: 1em; /* .2em drop in arrows */
+}
+.sf-menu ul {
+  -khtml-border-radius: 0px;  /* for old Safari, KHTML */
+  -moz-border-radius: 0px;    /* for Firefox */
+  -webkit-border-radius: 0px; /* for old Safari, KHTML */
+  border-radius: 0px;         /* for CSS3 */
+  border-width: 1px;
+  border-style: solid;
+}
+
+/**
+ * Nice menus
+ */
+ul.nice-menu {
+  line-height: 1em;
+  margin: 0px;
+  padding: 0px;
+}
+ul.nice-menu,
+ul.nice-menu ul,
+ul.nice-menu li {
+  /* remove all borders */
+  border: 0;
+}
+ul.nice-menu li {
+  /* height of root menu items */
+  line-height: 1.2em;
+}
+ul.nice-menu li a {
+  /* root menu items */
+  font-size: 0.9em;
+  padding: 4px 8px;
+  border: none;
+  border-right-style: solid;
+  border-right-width: 1px;
+  /* background-color is set by colors.css */
+  /* border-right-color is set by colors.css */
+}
+ul.nice-menu li.last a {
+  /* last item of the root menu */
+  border-right: none;
+}
+
+ul.nice-menu li ul {
+  margin: 0;
+  padding: 0px;
+}
+
+ul.nice-menu li.last ul li a,
+ul.nice-menu li ul li a,
+ul.nice-menu li ul li.last a {
+  /* all other chile menu items */
+  border-style: solid;
+  border-width: 1px;
+border-width: 0px;
+  /* border-color is set by colors.css */
+}
+ul.nice-menu li.menuparent a {
+  /* root menu item that has drop down menu */
+  background-image: url('../images/arrow-down.png');
+  background-repeat: no-repeat;
+  background-position: 98%;
+  /* background-color is set by colors.css */
+}
+ul.nice-menu li a {
+  /* root menu item that has no drop down menu */
+  /* background-color is set by colors.css */
+}
+ul.nice-menu li {
+  padding: 0px;
+}
+ul.nice-menu li ul li.menuparent a:hover,
+ul.nice-menu li ul li.menuparent:hover,
+ul.nice-menu li ul li.menuparent {
+  /* drop down menu item that has child menu */
+  background-image: url('../images/arrow-right.png');
+  background-repeat: no-repeat;
+  background-position: 95%;
+  /* background-color is set by colors.css */
+}
+ul.nice-menu li.menuparent ul {
+  padding-top: -5px;
+}
+ul.nice-menu li.menuparent li a {
+  background: none; /* do not delete! */
+}
+ul.nice-menu li.menuparent li {
+  background: none; /* do not delete! */
+}
+ul.nice-menu li ul li.menuparent li a:hover {
+  background: none; /* do not delete! */
+}
+
+/**
+ * Overlay layout for admin pages
+ */
+.overlay #main,
+.overlay #content {
+  width: auto;
+  float: none;
+}
+.overlay #skip-link,
+.overlay .region-page-top,
+.overlay #header,
+.overlay #page-title,
+.overlay #featured,
+.overlay #sidebar-first,
+.overlay #sidebar-second,
+.overlay #footer-wrapper,
+.overlay #banner-top,
+.overlay #banner-bottom,
+.overlay #highlighted,
+.overlay #navigation {
+  display: none;
+}
+.overlay #messages {
+  width: auto;
+}
+.overlay #page-wrapper {
+  width: 100%;
+}
+.overlay #page {
+  margin: 0;
+  padding: 0px;
+}
+#overlay-content {
+  margin: 0;
+  padding: 0px;
+}
+

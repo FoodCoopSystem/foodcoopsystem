@@ -1,0 +1,17 @@
+<?php
+/**
+ * @file
+ * Installation functions for User Relationships Mailer module
+ */
+
+function user_relationship_mailer_uninstall() {
+  variable_del('user_relationship_mailer_send_mail');
+
+  module_load_include('inc', 'user_relationship_mailer', 'user_relationship_mailer_defaults');
+  global $_user_relationship_mailer_ops;
+  foreach ($_user_relationship_mailer_ops as $op) {
+    variable_del("user_relationship_mailer_send_{$op}");
+    variable_del("user_relationship_mailer_{$op}_subject");
+    variable_del("user_relationship_mailer_{$op}_message");
+  }
+}

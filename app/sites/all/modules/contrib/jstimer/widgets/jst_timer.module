@@ -1,0 +1,575 @@
+<?php
+
+/**
+ * @file
+ *   Default widget implementation for an up and down timer.
+ *   This widget does not use hook_ctwidget as it is always included.
+ */
+
+define('DEFAULT_TIMER_COMPLETE', '<em>Timer Completed</em>');
+define('DEFAULT_HIGHLIGHT', 'style="color:red"');
+define('DEFAULT_HIGHLIGHT_THRESHOLD', '5');
+
+/**
+ * Settings for the default formatter.
+ */
+function jst_timer_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $formatter = $display['type'];
+  $form = array();
+
+  $form['dir'] = array(
+    '#title' => t('Countdown or countup timer'),
+    '#type' => 'select',
+    '#options' => array('up' => t('Up'), 'down' => t('Down')),
+    '#default_value' => $settings['dir'],
+    '#weight' => 0,
+  );
+
+  $form['format_txt'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Format of the timer:'),
+    '#default_value' => $settings['format_txt'],
+    '#weight' => 1,
+  );
+
+  return $form;
+}
+
+/**
+ * Settings summary for the default formatter.
+ */
+function jst_timer_formatter_settings_summary($field, $instance, $view_mode) {
+  return t('Displaying a countdown timer');
+}
+
+/**
+ * Implementation of hook_jstwidget().
+ *
+ * @returns stdClass
+ *   Keys include: ->name, ->theme_function, ->js_name, and ->js_code.
+ */
+function jst_timer_jstwidget() {
+
+$ret = new stdClass();
+$ret->name = 'jst_timer';
+$ret->label = t('Countdown timer');
+$ret->settings = array(
+  'dir' => 'down',
+  'format_txt' => ''
+);
+$ret->theme_function = 'jst_timer_show';
+$ret->js_name = 'Drupal.jstimer.jst_timer';
+
+$timer_formats = jst_timer_get_js_formats();
+
+// clean php variables for javascript injection
+$timer_complete_message = "'". jstimer_clean_for_javascript(variable_get('jst_timer_complete_message', DEFAULT_TIMER_COMPLETE)) . "'";
+$timer_complete_alert_message = "'" . jstimer_clean_for_javascript(variable_get('jst_timer_complete_alert_message', '')) . "'";
+$highlight = "'" . jstimer_clean_for_javascript(variable_get('jstimer_highlight', DEFAULT_HIGHLIGHT)) ."'";
+$highlight_threshold = "'" . jstimer_clean_for_javascript(variable_get('jstimer_highlight_threshold', DEFAULT_HIGHLIGHT_THRESHOLD)) . "'";
+$redirect_path = "'" . variable_get('jst_timer_redirect_path', '') . "'";
+$redirect_delay = "'" . variable_get('jst_timer_redirect_delay', 3) . "'";
+
+$ret->js_code = <<<JAVASCRIPT_CODE
+
+/*
+ * Timer widget
+ */
+Drupal.jstimer.formats = $timer_formats;
+
+Drupal.jstimer.jst_timer = function() {
+  this.selector = ".jst_timer";
+  this.attach = function() {
+    jQuery(this.selector).each(
+      function(i) {  // i is the position in the each fieldset
+        var t = new Drupal.jstimer.jst_timer_item(jQuery(this));
+        if ( t.parse_microformat_success == 1 ) {
+          Drupal.jstimer.timer_stack[Drupal.jstimer.timer_stack.length] = t;
+        }
+      }
+    );
+  }
+}
+
+Drupal.jstimer.jst_timer_item = function(ele) {
+
+  // class methods first so you can use them in the constructor.
+  this.loadProps = function() {
+    for (var prop in this.props) {
+      var prop_selector = "span[class="+prop+"]";
+      if ( this.element.children(prop_selector).length > 0 ) {
+        this.props[prop] = this.element.children(prop_selector).html();
+      }
+    }
+
+    if ( String(this.props['format_txt']).match("'") ) {
+      this.props['format_txt'] = "<span style=\"color:red;\">Format may not contain single quotes(').</span>";
+    }
+
+    // format_txt overrides format_num.
+    if ( this.props['format_txt'] != "" ) {
+      this.outformat = this.props['format_txt'];
+    } else {
+      if (Drupal.jstimer.formats[this.props['format_num']] != undefined) {
+        this.outformat = Drupal.jstimer.formats[this.props['format_num']];
+      }
+      else {
+        this.outformat = Drupal.jstimer.formats[0];
+      }
+    }
+
+  }
+
+  this.parse_microformat = function() {
+
+    // ajax calls re-run autoattach, make sure the selector is gone.
+    if ( this.element.hasClass("jst_timer") ) {
+      this.element.removeClass("jst_timer")
+    }
+
+    // If there is an interval, always use it.
+    if ( this.props['interval'] != "" ) {
+      var interval_val = parseInt(this.props['interval']);
+      var date = new Date();
+      this.to_date = date;
+      this.to_date.setTime(date.getTime() + (interval_val*1000));
+    } else {
+      if ( this.props['datetime'] == "" ) {
+        this.parse_microformat_success = 0;
+        throw new Object({name:"NoDate",message:"Javascript Timer: Span with class=datetime not found within the timer span."});
+      }
+      var date = new Date();
+      try {
+        date.jstimer_set_iso8601_date(this.props['datetime']);
+      }
+      catch(e) {
+        throw(e);
+      }
+      this.to_date = date;
+      if ( this.props['current_server_time'] != "" ) {
+        // this is a feedback time from the server to correct for small server-client time differences.
+        // not used for normal block and node timers.
+        var date_server = new Date();
+        date_server.jstimer_set_iso8601_date(this.props['current_server_time']);
+        var date_client = new Date();
+        var adj = date_client.getTime() - date_server.getTime();
+        // adjust target date to clients domain
+        this.to_date.setTime(this.to_date.getTime() + adj);
+      }
+    }
+
+    this.parse_microformat_success = 1;
+  }
+
+
+
+  this.update = function() {
+    var now_date = new Date();
+    var duration = this.get_duration(now_date, this.to_date);
+
+    // If counting down and timer is completed, set timer complete statement, check for redirect, and end.
+    if ( this.props['dir'] == "down" && duration.sign > 0 ) {
+
+      // Set the timer complete statement.
+      if (this.props['timer_complete_message'] != '') {
+        this.element.html(this.props['timer_complete_message'] + '');
+        // Clear message as we don't need to reset it again.
+        this.props['timer_complete_message'] = '';
+      }
+
+      // If there is a complete message, alert it.
+      if (this.props['tc_msg'] != '') {
+        alert(this.props['tc_msg']);
+        // Clear alert msg as we don't need to alert it again.
+        this.props['tc_msg'] = '';
+      }
+
+      // If there is a redirect url and delay has been met, redirect.
+      if (this.props['tc_redir'] != '' && (duration.diff >= this.props['tc_redir_delay'])) {
+      	if (this.props['tc_redir'].match('<reload>')) {
+      		window.location.reload(true);
+      	}
+      	else {
+        	window.location = this.props['tc_redir'];
+        }
+        return false;
+      }
+      // Timer is completed
+      return true;
+    }
+
+
+    var outhtml = new String(this.outformat);
+
+    // try to handle counts with units first, use a try block because Drupal.formatPlural breaks javascript sometimes
+    try {
+      outhtml = outhtml.replace(/%years% years/,  Drupal.formatPlural(duration.years, "1 year", "@count years"));
+      outhtml = outhtml.replace(/%ydays% days/,   Drupal.formatPlural(duration.days, "1 day", "@count days"));
+      outhtml = outhtml.replace(/%days% days/,    Drupal.formatPlural(duration.tot_days, "1 day", "@count days"));
+      outhtml = outhtml.replace(/%hours% hours/,  Drupal.formatPlural(duration.hours, "1 hour", "@count hours"));
+      outhtml = outhtml.replace(/%mins% minutes/, Drupal.formatPlural(duration.minutes, "1 minute", "@count minutes"));
+      outhtml = outhtml.replace(/%secs% seconds/, Drupal.formatPlural(duration.seconds, "1 second", "@count seconds"));
+      outhtml = outhtml.replace(/%months% months/, Drupal.formatPlural(duration.months, "1 month", "@count months"));
+      outhtml = outhtml.replace(/%tot_months% months/, Drupal.formatPlural(duration.tot_months, "1 month", "@count months"));
+    }
+    catch(e){
+      // suppress errors
+    }
+
+    //handle counts without units
+    outhtml = outhtml.replace(/%years%/, duration.years);
+    outhtml = outhtml.replace(/%ydays%/, duration.days);
+    outhtml = outhtml.replace(/%days%/, duration.tot_days);
+    outhtml = outhtml.replace(/%hours%/, LZ(duration.hours));
+    outhtml = outhtml.replace(/%mins%/, LZ(duration.minutes));
+    outhtml = outhtml.replace(/%secs%/, LZ(duration.seconds));
+    outhtml = outhtml.replace(/%hours_nopad%/, duration.hours);
+    outhtml = outhtml.replace(/%mins_nopad%/, duration.minutes);
+    outhtml = outhtml.replace(/%secs_nopad%/, duration.seconds);
+    outhtml = outhtml.replace(/%sign%/, duration.sign < 0 ? '-' : '+');
+    outhtml = outhtml.replace(/%months%/, duration.months);
+    outhtml = outhtml.replace(/%tot_months%/, duration.tot_months);
+
+    // Proximity styling.
+    if (this.props['highlight'][0] != undefined && this.props['highlight'][0] != '' && this.props['dir'] == "down" && (duration.diff <= (this.props['threshold'] * 60))) {
+      this.element.html('<span ' + this.props['highlight'][0] + '=' + this.props['highlight'][1] + '>' +  outhtml + '</span>');
+    } else {
+      this.element.html(outhtml);
+    }
+
+    return true;
+  }
+
+  this.get_duration = function(now, target) {
+    var dur = {diff:0, sign:0, years:0, months:0, days:0, hours:0, minutes:0, seconds:0, tot_months:0, tot_days:0};
+    dur.diff = Math.floor((now.getTime() - target.getTime()) / 1000);
+    if ( dur.diff < 0 ) {
+      dur.sign = -1;
+      dur.diff = Math.abs(dur.diff);
+    } else {
+      dur.sign = 1;
+    }
+
+    dur.years = Math.floor(dur.diff / 60 / 60 / 24 / 365.25);
+
+    // Use calendar months, using months based on seconds is problematic.
+    if(now.getFullYear() == target.getFullYear()) {
+       dur.tot_months = Math.abs(target.getMonth() - now.getMonth());
+       dur.months = dur.tot_months;
+    } else {
+      dur.tot_months = 11 - now.getMonth();
+      dur.tot_months += target.getMonth() + 1;
+      dur.tot_months += (target.getFullYear() - now.getFullYear() - 1) * 12;
+      dur.months = dur.tot_months - (dur.years * 12);
+    }
+
+    dur.tot_days = Math.floor(dur.diff / 60 / 60 / 24);
+    dur.days = Math.ceil(dur.tot_days - (dur.years * 365.25));
+    dur.hours = Math.floor(dur.diff / 60 / 60) - (dur.tot_days * 24);
+    dur.minutes = Math.floor(dur.diff / 60) - (dur.hours * 60) - (dur.tot_days * 24 * 60);
+    dur.seconds = dur.diff - (dur.minutes * 60) - (dur.hours * 60 * 60) - (dur.tot_days * 24 * 60 * 60);
+    return dur;
+  }
+
+
+
+  // begin constructor
+  this.element = ele;
+
+  // Defaults for each timer.
+  this.props = {
+    datetime: '',
+    dir: 'down',
+    format_num: 0,
+    format_txt: '',
+    timer_complete_message: new String($timer_complete_message),
+    highlight: new String($highlight).split(/=/),
+    threshold: new Number($highlight_threshold),
+    tc_redir: new String($redirect_path),
+    tc_redir_delay: new Number($redirect_delay),
+    tc_msg: new String($timer_complete_alert_message),
+    interval: '',
+    current_server_time: ''
+  };
+  this.loadProps();
+
+
+  /* bootstrap, parse microformat, load object */
+  try {
+    this.parse_microformat();
+  }
+  catch(e) {
+    alert(e.message);
+    alert(jQuery(ele).html());
+    this.parse_microformat_success = 0;
+    return;
+  }
+
+  // replace the static stuff in the format string
+  // this only needs to be done once, so here is a good spot.
+  this.outformat = this.outformat.replace(/%day%/,   this.to_date.getDate());
+  this.outformat = this.outformat.replace(/%month%/, this.to_date.getMonth() + 1);
+  this.outformat = this.outformat.replace(/%year%/,  this.to_date.getFullYear());
+  this.outformat = this.outformat.replace(/%moy%/,   this.to_date.jstimer_get_moy());
+  this.outformat = this.outformat.replace(/%dow%/,   this.to_date.jstimer_get_dow());
+}
+// End of timer widget.
+
+JAVASCRIPT_CODE;
+
+return $ret;
+}
+
+
+/**
+ * Implementation of hook_form_alter().
+ * Add the timer widget specific settings to admin screen.
+ */
+function jst_timer_form_alter(&$form, $form_state, $form_id) {
+
+  // Get a list of formats.
+  $timer_formats = jst_timer_get_formats();
+
+  switch ($form_id) {
+
+    //change this to form_id of the form you want to alter
+    case 'jstimer_admin_settings':
+
+      $form['jst_timer'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Timer widget'),
+        '#weight' => 1
+      );
+
+      $form['jst_timer']['jst_timer_formats'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Timer formats'),
+        '#collapsible' => TRUE,
+        '#tree' => TRUE,
+        '#description' => t("Formats control how each timer will display and also allow you to add styles/classes.") .
+          '<br/>' . t("Available replacement values are: %day%, %month%, %year%, %dow%, %moy%, %years%, %ydays%, %days%, %hours%, %mins%, and %secs%.") .
+          '<br/>' . t("Refresh the page after saving to reload the examples."),
+      );
+
+      $i = 0;
+      foreach ($timer_formats as $i => $format) {
+        // 0 is the global default format.
+        if ($i == 0) {
+          $form['jst_timer']['jst_timer_formats'][] = array(
+            '#type' => 'textarea',
+            '#rows' => 1,
+            '#title' => t('Global format'),
+            '#default_value' => $format,
+            '#description' => theme('jstimer', array('widget_name' => 'jst_timer',
+                'widget_args' => array(
+                  'datetime' => '2015-05-02T08:11:00+02:00',
+                  'format_num' => $i))),
+          );
+        }
+        else {
+          $form['jst_timer']['jst_timer_formats'][] = array(
+            '#type' => 'textarea',
+            '#rows' => 1,
+            '#title' => t('Format preset %preset_num', array('%preset_num' => $i)),
+            '#default_value' => $format,
+            '#description' => theme('jstimer', array('widget_name' => 'jst_timer',
+                'widget_args' => array(
+                  'datetime' => '2015-05-02T08:11:00+02:00',
+                  'format_num' => $i))),
+          );
+        }
+      }
+      // Add a blank one.
+      $form['jst_timer']['jst_timer_formats'][] = array(
+        '#type' => 'textarea',
+        '#rows' => 1,
+        '#title' => t('Format preset %preset_num', array('%preset_num' => $i + 1)),
+        '#default_value' => '',
+        '#description' => t('Add a new preset.'),
+      );
+
+      $form['jst_timer']['actions'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Countdown timer actions'),
+        '#weight' => 1,
+        '#description' => t('Javascript actions that execute when a countdown timer completes or nears completion.'),
+      );
+
+      // Proximity styling.
+      $form['jst_timer']['actions']['proximity'] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Proximity styling'),
+        '#description' => t('Dynamic styling of timer when countdown approaches completion.'),
+        '#tree' => FALSE,
+      );
+      $form['jst_timer']['actions']['proximity']['jstimer_highlight'] = array(
+        '#type' => 'textfield',
+        '#size' => 100,
+        '#title' => t('CSS statement'),
+        '#default_value' => variable_get('jstimer_highlight', DEFAULT_HIGHLIGHT),
+        '#description' => t("Use a complete css attribute statement like style=\"\" or class=\"\"."),
+      );
+      $form['jst_timer']['actions']['proximity']['jstimer_highlight_threshold'] = array(
+        '#type' => 'textfield',
+        '#size' => 5,
+        '#title' => t('Threshold (minutes)'),
+        '#default_value' => variable_get('jstimer_highlight_threshold', DEFAULT_HIGHLIGHT_THRESHOLD),
+        '#description' => t("Number of minutes before css statement is applied."),
+      );
+
+      // Redirect URL.
+      $form['jst_timer']['actions']['redirect'] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Timer complete redirect'),
+        '#description' => t('Javascript redirect/refresh that runs when a countdown completes.'),
+        '#tree' => FALSE,
+      );
+      $form['jst_timer']['actions']['redirect']['jst_timer_redirect_path'] = array(
+        '#type' => 'textfield',
+        '#size' => 100,
+        '#title' => t('Redirect path'),
+        '#default_value' => variable_get('jst_timer_redirect_path', ''),
+        '#description' => t('An absolute URL or %reload for same page.', array('%reload' => '<reload>')),
+      );
+      $form['jst_timer']['actions']['redirect']['jst_timer_redirect_delay'] = array(
+        '#type' => 'textfield',
+        '#size' => 5,
+        '#title' => t('Delay (seconds)'),
+        '#default_value' => variable_get('jst_timer_redirect_delay', 3),
+        '#description' => t("Number of seconds to wait after countdown completion before running redirect/refresh."),
+      );
+
+      // Timer complete message.
+      $form['jst_timer']['actions']['jst_timer_complete_message'] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Timer complete message'),
+        '#description' => t('Message that replaces timer when a countdown completes.'),
+        '#weight' => 1,
+      );
+      $form['jst_timer']['actions']['jst_timer_complete_message']['jst_timer_complete_message'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Message'),
+        '#size' => 80,
+        '#default_value' => variable_get('jst_timer_complete_message', DEFAULT_TIMER_COMPLETE),
+      );
+
+      // Timer complete alert.
+      $form['jst_timer']['actions']['jst_timer_complete_alert'] = array(
+        '#type' => 'fieldset',
+        '#collapsible' => TRUE,
+        '#collapsed' => TRUE,
+        '#title' => t('Timer complete alert message'),
+        '#description' => t('Message that pops up in an alert box when when a countdown completes.  Do NOT use HTML.'),
+        '#weight' => 1,
+      );
+      $form['jst_timer']['actions']['jst_timer_complete_alert']['jst_timer_complete_alert_message'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Message'),
+        '#size' => 80,
+        '#default_value' => variable_get('jst_timer_complete_alert_message', ''),
+      );
+
+      $form['buttons']['#weight'] = 2;
+
+      // Put this module's submit handler first so you can remove elements that
+      // this module handles in the submit handler.
+      array_unshift($form['#submit'], 'jst_timer_admin_settings_submit');
+      break;
+  }
+}
+
+
+function jst_timer_admin_settings_submit($form, &$form_state) {
+  // Hander formats here and remove so other handler don't try to save them.
+  $formats = $form_state['values']['jst_timer_formats'];
+  foreach ($formats as $i => $format) {
+    if ($format == '') {
+      unset($formats[$i]);
+    }
+  }
+  $formats = array_values($formats);
+
+  variable_set('jst_timer_formats', $formats);
+  unset($form_state['values']['jst_timer_formats']);
+  drupal_set_message(t('Remember to "reload" the page.  Most browsers will cache the javascript file.'));
+}
+
+
+function jst_timer_show($widget_args) {
+  $output = '<span class="jst_timer">';
+  if (isset($widget_args['no_js_txt']) ) {
+    $output .= $widget_args['no_js_txt'];
+  }
+  $valid_atts = array('datetime', 'dir', 'format_txt', 'format_num', 'threshold', 'complete', 'tc_redir', 'tc_redir_delay', 'tc_msg', 'interval', 'current_server_time');
+  foreach ($valid_atts as $att) {
+    if ( isset($widget_args[$att]) ) {
+      $output .= '<span style="display:none" class="'. $att. '">'. $widget_args[$att] .'</span>';
+    }
+  }
+  $output .= '</span>';
+  return $output;
+}
+
+
+/**
+ * Implementation of hook_enable().
+ */
+function jst_timer_enable() {
+  jstimer_build_js_cache();
+}
+
+
+/**
+ * This allows for translation of replacement strings.
+ * Since this module uses dynamic javascript, the js file is not available
+ * for localize.drupal.org to translate.
+ * @return
+ *   Nothing
+ */
+function translate_replacements() {
+  $translate = array(
+    t('1 year'), t('@count years'),
+    t('1 day'), t('@count days'),
+    t('1 hour'), t('@count hours'),
+    t('1 minute'), t('@count minutes'),
+    t('1 second'), t('@count seconds'),
+    t('1 month'), t('@count months'),
+  );
+}
+
+
+/**
+  * Get a javascript array encoded list of timer formats.
+  */
+function jst_timer_get_js_formats() {
+  $js_formats = array();
+  $formats = jst_timer_get_formats();
+  foreach ($formats as $f) {
+    $js_formats[] = "'" . jstimer_clean_for_javascript($f) . "'";
+  }
+  return '[' . implode(',', $js_formats) . ']';
+}
+
+
+/**
+  * Get a list of formats and handle default values.
+  */
+function jst_timer_get_formats() {
+  $formats = variable_get('jst_timer_formats', array());
+  if (count($formats) == 0) {
+    // The first one is the global format.
+    $formats[] = '<em>(%dow% %moy%%day%)</em><br/>%days% days + %hours%:%mins%:%secs%';
+    $formats[] = 'Only %days% days, %hours% hours, %mins% minutes and %secs% seconds left';
+    $formats[] = '%days% shopping days left';
+    $formats[] = '<em>(%dow% %moy%%day%)</em><br/>%days% days + %hours%:%mins%:%secs%';
+  }
+  return $formats;
+}

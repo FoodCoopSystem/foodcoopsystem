@@ -1,0 +1,22 @@
+name = Shipping UI
+description = Implement core shipping features for Drupal commerce.
+package = Commerce (shipping)
+dependencies[] = commerce
+dependencies[] = commerce_order
+dependencies[] = commerce_order_ui
+dependencies[] = commerce_shipping
+core = 7.x
+configure = admin/commerce/config/shipping-methods
+
+; Base module files
+files[] = commerce_shipping_ui.module
+
+; Views include
+files[] = includes/views/commerce_shipping_ui.views_default.inc
+
+; Information added by drupal.org packaging script on 2012-11-15
+version = "7.x-1.1"
+core = "7.x"
+project = "commerce_shipping"
+datestamp = "1353011123"
+

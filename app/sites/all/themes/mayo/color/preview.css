@@ -1,0 +1,208 @@
+
+/* Bring in the rest of the theme's CSS styles. */
+@import url("../css/style.css");
+
+/* From color.css. */
+#preview, #preview-header {
+  background-color: #fff;
+}
+/* Undoing Seven's reset. */
+#preview #preview-header #preview-logo img {
+  border: 0;
+  float: left;
+  padding: 5px;
+}
+
+/* ---------- Basic Preview Styles ----------- */
+
+#preview {
+  width: 640px;
+  overflow: hidden;
+  font-size: 1em;
+  font-family: Georgia, 'Palatino Linotype', Palatino, Times, Times New Roman, New York, sans-serif;
+  font-style: normal;
+  line-height: 1.8em;
+  border: solid 1px #444;
+}
+#preview #preview-header-wrapper {
+  width: 100%;
+}
+#preview #preview-header {
+  border-style: solid;
+  border-width: 1px;
+  padding: 0px;
+}
+#preview #preview-header-watermark {
+  margin: 0;
+  padding: 0px;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-position: top center;
+}
+#preview #preview-header #preview-site-slogan {
+  font-style: italic;
+}
+#preview #preview-page-wrapper {
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+#preview #preview-page {
+  padding: 10px 10px 10px 10px;
+}
+#preview #preview-name-and-slogan {
+  padding: 5px 10px;
+  float: left;
+}
+#preview #preview-navigation-wrapper {
+  width: 100%;
+  display: inline;
+}
+#preview #preview-navigation {
+  padding: 5px;
+  margin: 0;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+#preview #preview-navigation ul li {
+  padding: 2px 4px 2px 0px;
+  border-right-style: solid;
+  border-right-width: 1px;
+}
+#preview #preview-navigation ul li a {
+  padding: 2px 5px;
+}
+#preview #preview-site-name a {
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: xx-large;
+  font-weight: 1000;
+  line-height: 1em;
+}
+#preview #preview-header div.section,
+#preview #preview-navigation div.section,
+#preview #preview-featured div.section,
+#preview #preview-main {
+  padding: 0px;
+  width: 100%;
+}
+#preview #preview-main-wrapper {
+  padding: 0;
+  margin: 0;
+  padding: 10px 0px 0px 0px;
+}
+#preview #preview-main {
+  padding: 0;
+  margin: 0;
+}
+#preview #preview-content {
+  display: inline;
+  float: left; /* LTR */
+  position: relative;
+}
+#preview .sidebar {
+  display: inline;
+  position: relative;
+  float: left; /* LTR */
+}
+#preview #preview-content {
+  width: 390px;
+  margin: 0;
+  padding: 0px;
+  margin-left: 10px; /* gap between sidebar and main content */
+}
+#preview .sidebar * {
+  padding: 0;
+  margin: 0;
+  line-height: 1.8em;
+}
+#preview .sidebar {
+  width: 180px;
+  padding: 0;
+  margin: 0;
+}
+#preview .sidebar .block {
+  padding: 10px;
+  border-style: solid;
+  border-width: 1px;
+  margin-bottom: 10px;
+}
+#preview .sidebar .block .content {
+  padding: 10px 0px 0px 0px;
+}
+#preview .sidebar {
+  margin: 0;
+  padding: 0;
+}
+#preview .sidebar h2 {
+  background: transparent;
+  line-height: 1em;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+  margin-bottom: 0;
+  padding: 2px 0px;
+}
+#preview .sidebar div.item-list ul {
+  margin-left: 10px;
+}
+
+#preview #preview-page-title {
+  line-height: 1em;
+  padding: 4px 10px;
+  margin: 0px;
+  font-size: large;
+  margin-bottom: 10px;
+}
+#preview .node {
+  margin: 0;
+  padding: 10px;
+  border-style: solid;
+  border-width: 1px;
+  margin-bottom: 10px;
+}
+#preview .node h2 {
+  margin: 0;
+  padding: 0;
+  border-bottom-style: solid;
+  border-bottom-width: 1px;
+}
+#preview .node-sticky {
+  border-style: solid;
+  border-width: 0px;
+  margin-bottom: 10px;
+}
+#preview #preview-footer-wrapper {
+  width: 100%;
+  padding: 0px;
+  margin: 0px;
+  display: block;
+  clear: both;
+}
+#preview #preview-footer {
+  text-align: center;
+  margin: 0px;
+  padding-bottom: 15px;
+}
+#preview .preview-footer-column {
+  padding: 10px 10px 10px 20px;
+  width: 160px;
+  float: left;
+}
+
+#preview table {
+  font-size: small;
+  font-weight: normal;
+  text-decoration: none;
+}
+#preview table,
+#preview table tr,
+#preview table tr td {
+  border-width: 0px;
+}
+#preview table tr th {
+  border-width: 0px;
+  border-right-width: 1px;
+  font-weight: bold;
+  padding: 0px 4px;
+}

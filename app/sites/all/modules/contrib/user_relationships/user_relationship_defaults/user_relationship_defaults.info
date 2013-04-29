@@ -1,0 +1,14 @@
+name = UR-Defaults
+description = "Allows admins to specify relationships that are automatically created when a new user joins"
+dependencies[] = user_relationships
+dependencies[] = user_relationships_ui
+package = "User Relationships"
+core = 7.x
+files[]=user_relationship_defaults.module
+
+; Information added by drupal.org packaging script on 2012-03-01
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "user_relationships"
+datestamp = "1330562762"
+

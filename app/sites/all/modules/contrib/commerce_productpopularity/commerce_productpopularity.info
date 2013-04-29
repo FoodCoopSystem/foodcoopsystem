@@ -1,0 +1,21 @@
+name = Commerce Product Popularity
+description = Allows Radioactivity fields to increase energy when products are purchased
+core = 7.x
+package = Commerce (contrib)
+php = 5.2.4
+dependencies[] = commerce_line_item
+dependencies[] = commerce_order
+dependencies[] = commerce_payment
+dependencies[] = commerce_product
+dependencies[] = entity
+dependencies[] = radioactivity
+dependencies[] = rules
+features[features_api][] = api:1
+features[rules_config][] = rules_commerce_productpopularity
+
+; Information added by drupal.org packaging script on 2012-07-09
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "commerce_productpopularity"
+datestamp = "1341837383"
+

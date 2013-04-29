@@ -1,0 +1,17 @@
+Views Calc Module 7.x
+=====================
+
+Version 7.x-1.x-dev
+===================
+
+- Set Views Calc fields menu item so it shows up under 'Structure'.
+- Code cleanup, remove commented-out code.
+- Remove 'Hide empty column' option from Views Calc table settings. We need the query and all sub-queries to have the same number of columns.
+- Got custom fields working again.
+- Clean up views_calc.install and more tweaks to field handling.
+- Issue #1525560 by zyxware, More fixes to consistent use of object instead of array in calc fields.
+- Issue #1193404 by Niremizov, Make sure all the Views Calc field data is consistently expecting an object instead of an array.
+- Fix the Views Calc field query so it returns a populated object.
+- Get the calculations appearing correctly at the bottom of the view, and add some options to control the formatting of the aggregated values.
+- Change the table sorting to match the latest Views table sorting.
+- Fix table settings to match latest Views table layout.

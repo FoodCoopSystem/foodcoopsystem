@@ -1,0 +1,14 @@
+name = Field reference
+description = Defines a field type for referencing a field from another.
+package = Fields
+core = 7.x
+dependencies[] = entity
+dependencies[] = field
+dependencies[] = references
+dependencies[] = options
+; Information added by drupal.org packaging script on 2012-08-20
+version = "7.x-1.0"
+core = "7.x"
+project = "field_reference"
+datestamp = "1345432353"
+

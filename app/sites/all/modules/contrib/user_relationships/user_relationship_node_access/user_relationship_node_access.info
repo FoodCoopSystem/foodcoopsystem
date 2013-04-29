@@ -1,0 +1,12 @@
+name = UR-Node Access
+description = "Provides per node access control based on relationship to author"
+dependencies[] = user_relationships
+package = "User Relationships"
+core = 7.x
+files[]=user_relationship_node_access.module
+; Information added by drupal.org packaging script on 2012-03-01
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "user_relationships"
+datestamp = "1330562762"
+

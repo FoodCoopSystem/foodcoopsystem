@@ -1,0 +1,86 @@
+
+name = MAYO
+description = Simple but fully customizable and colorable fixed/liquid layout theme
+core = 7.x
+
+stylesheets[all][] = css/layout.css
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/colors.css
+
+regions[header] = Header
+regions[help] = Help
+regions[page_top] = Page top
+regions[page_bottom] = Page bottom
+
+regions[menubar] = Menu bar
+regions[submenubar] = Submenu bar
+
+regions[banner_top] = Banner top
+
+regions[top_column_first]  = Top first column
+regions[top_column_second] = Top second column
+regions[top_column_third]  = Top third column
+regions[top_column_fourth] = Top fourth column
+
+regions[highlighted] = Highlighted
+regions[content] = Content
+regions[sidebar_first] = Sidebar first
+regions[sidebar_second] = Sidebar second
+
+regions[bottom_column_first]  = Bottom first column
+regions[bottom_column_second] = Bottom second column
+regions[bottom_column_third]  = Bottom third column
+regions[bottom_column_fourth] = Bottom fourth column
+
+regions[banner_bottom] = Banner bottom
+
+regions[footer_column_first] = Footer first column
+regions[footer_column_second] = Footer second column
+regions[footer_column_third] = Footer third column
+regions[footer_column_fourth] = Footer fourth column
+regions[footer] = Footer
+
+settings[shortcut_module_link] = 0
+
+settings[base_font_size] = 87.5%
+settings[base_font_family] = 0
+settings[base_custom_font_family] = 'Helvetica, Arial, sans-serif'
+settings[heading_font_family] = 0
+settings[heading_custom_font_family] = 'Helvetica, Arial, sans-serif'
+
+settings[base_vmargin] = 14px
+settings[page_width] = 90%
+settings[page_margin] = 10px
+settings[layout_style] = 1
+settings[round_corners] = 0
+
+settings[header_searchbox] = 1
+settings[header_fontsizer] = 0
+settings[header_height] = 90px
+settings[header_border_width] = 1px
+settings[logo_top_margin] = 15px
+settings[logo_left_margin] = 20px
+settings[sitename_top_margin] = 15px
+settings[sitename_left_margin] = 20px
+settings[searchbox_top_margin] = 20px
+settings[searchbox_right_margin] = 15px
+settings[searchbox_size] = 24
+settings[header_bg_file] = ''
+settings[header_bg_alignment] = 'top left'
+settings[header_watermark] = 0
+
+settings[menubar_style] = 1
+
+settings[sidebar_layout_style] = 1
+settings[sidebar_first_width] = 25%
+settings[sidebar_second_width] = 25%
+
+settings[display_breadcrumb] = 1
+settings[dark_messages] = 0
+
+; Information added by drupal.org packaging script on 2011-11-17
+version = "7.x-1.2"
+core = "7.x"
+project = "mayo"
+datestamp = "1321543882"
+

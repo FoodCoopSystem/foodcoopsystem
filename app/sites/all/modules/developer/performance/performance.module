@@ -1,0 +1,1358 @@
+<?php
+// TODO: how about making a function performance_available_mechanisms() that
+// checks what mechanisms are available and builds an array like:
+//   array(
+//     'database' => array(
+//       '#name' => t('database),
+//       '#get' => 'performance_db_get_data',
+//       '#set' => 'performance_log_summary_db',
+//       '#enabled' => TRUE,
+//     ),
+//     [... other mechanisms here ...]
+//     '#active' => 'memcache',
+//   );
+// This can be used to:
+//  - easily add other mechanisms by simply expanding
+//    performance_available_mechanisms() and providing the necessary get/set
+//    functions
+//  - Create a better data source switcher which will automagically work on all
+//    available mechanisms
+//  - Cleanup the logging in performance_shutdown(): instead of using the three
+//    silly if statemens there, just loop over the array provided by
+//    performance_available_mechanisms(). All (newly added) mechanisms will then
+//    automatically be processed.
+//  - ...
+// Or would that be too much?
+
+/**
+ * @file
+ *
+ * Logs detailed and/or summary page generation time and memory consumption for
+ * page requests.
+ * Copyright Khalid Baheyeldin 2008 of http://2bits.com
+ */
+
+/**
+ * Zend Datacache reference: http://files.zend.com/help/Zend-Server-IBMi/zend_data_cache_-_php_api.htm
+ */
+
+define('PERFORMANCE_KEY',            'dru-perf:'. $_SERVER['HTTP_HOST'] .':');
+define('PERFORMANCE_MEMCACHE_BIN',   'cache_performance');
+
+define('PERFORMANCE_ZEND_NAMESPACE', 'dru-perf-'. $_SERVER['HTTP_HOST']);
+define('PERFORMANCE_ZEND_KEYS',      PERFORMANCE_ZEND_NAMESPACE . '::all-of-the-keys');
+
+/**
+ * Implementation of hook_menu().
+ */
+function performance_menu() {
+  $items = array();
+
+  $items['admin/config/development/performance-logging'] = array(
+    'title'            => 'Performance logging',
+    'description'      => 'Logs performance data: page generation times and memory usage.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('performance_settings_form'),
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/config/development/performance-logging/settings'] = array(
+    'title'            => 'Performance logging',
+    'description'      => 'Logs performance data: page generation times and memory usage.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('performance_settings_form'),
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'weight'           => 0,
+  );
+
+  $items['admin/config/development/performance-logging/apc-clear'] = array(
+    'title'            => 'Clear APC',
+    'description'      => 'Clears performance statistics collected in APC.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('performance_clear_apc_confirm'),
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight'           => 1,
+  );
+
+  $items['admin/config/development/performance-logging/memcache-clear'] = array(
+    'title'            => 'Clear Memcache',
+    'description'      => 'Clears performance statistics collected in Memcache.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('performance_clear_memcache_confirm'),
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight'           => 2,
+  );
+
+  $items['admin/config/development/performance-logging/zend-clear'] = array(
+    'title'            => 'Clear Zend Datacache',
+    'description'      => 'Clears performance statistics collected in Zend Datacache.',
+    'page callback'    => 'drupal_get_form',
+    'page arguments'   => array('performance_clear_zend_confirm'),
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight'           => 3,
+  );
+
+  $items['admin/reports/performance-logging'] = array(
+    'title'            => 'Performance logs',
+    'description'      => 'View summary performance logs: page generation times and memory usage.',
+    'page callback'    => 'performance_view_summary',
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_NORMAL_ITEM,
+  );
+
+  $items['admin/reports/performance-logging/summary'] = array(
+    'title'            => 'Summary',
+    'description'      => 'View summary performance logs: page generation times and memory usage.',
+    'page callback'    => 'performance_view_summary',
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_DEFAULT_LOCAL_TASK,
+    'weight'           => 0,
+  );
+
+  $items['admin/reports/performance-logging/details'] = array(
+    'title'            => 'Details',
+    'description'      => 'View detailed, per page, performance logs: page generation times and memory usage.',
+    'page callback'    => 'performance_view_details',
+    'access arguments' => array('administer performance logging'),
+    'type'             => MENU_LOCAL_TASK,
+    'weight'           => 1,
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_permission().
+ */
+function performance_permission() {
+  return array(
+  'administer performance logging' => array(
+    'title'       => t('Administer performance logging'),
+    'description' => t('Allows both configuring the performance module and accessing its reports.'),
+    )
+  );
+}
+
+/**
+ * Implementation of hook_cron().
+ */
+function performance_cron() {
+  // One day ago.
+  $timestamp = REQUEST_TIME - 24*60*60;
+
+  performance_db_prune($timestamp);
+  performance_apc_prune($timestamp);
+  performance_memcache_prune($timestamp);
+  performance_zend_prune($timestamp);
+}
+
+/**
+ * System settings form.
+ */
+function performance_settings_form() {
+  $options = array(
+    0 => t('Disabled'),
+    1 => t('Enabled'),
+  );
+
+  // Display message on settings form.
+  $caches = array();
+  $type = 'error';
+  
+  if (performance_apc_enabled()) {
+    // APC enabled.
+    $caches[] = 'APC';
+    $type = 'status';
+  }
+  
+  if (performance_memcache_enabled()) {
+    // Memcache enabled.
+    $caches[] = 'Memcache';
+	$type = 'status';
+  }
+  
+  if (performance_zend_enabled()) {
+    // Zend Datacache enabled.
+    $caches[] = 'Zend Datacache';
+    $type = 'status';
+  }
+
+  if (count($caches) > 0) {
+    $message = t('!cache enabled. It is reasonably safe to enable summary logging on live sites.', array('!cache' => join("+", $caches)));
+  }
+  else {
+    $message = t('APC, Memcache, nor Zend Datacache are enabled. It is <strong>not</strong> safe to enable summary logging to the database on live sites!');
+  }
+  drupal_set_message($message, $type, FALSE);
+
+  // Setup settings form.
+  $form['mode'] = array(
+    '#type'  => 'fieldset',
+    '#title' => t('Logging mode'),
+    '#collapsible' => TRUE,
+  );
+
+  $form['mode']['performance_detail'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Detailed logging'),
+    '#default_value' => variable_get('performance_detail', 0),
+    '#options'       => $options,
+    '#description'   => t('Log memory usage and page generation times for every page. This logging mode is <strong>not</strong> suitable for large sites, as it can degrade performance severly. It is intended for use by developers, or on a test copy of the site.'),
+  );
+
+  $form['mode']['performance_summary_db'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Summary logging (DB)'),
+    '#default_value' => variable_get('performance_summary_db', 0),
+    '#options'       => $options,
+    '#description'   => t('Log summary data, such as average and maximum page generation times and memory usage to the database. This logging mode is <strong>not</strong> suitable for most live sites.'),
+  );
+
+  $disabled = TRUE;
+  if (performance_apc_enabled()) {
+    $disabled = FALSE;
+  }
+
+  $form['mode']['performance_summary_apc'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Summary logging (APC)'),
+    '#default_value' => variable_get('performance_summary_apc', 0),
+    '#options'       => $options,
+    '#disabled'      => $disabled,
+    '#description'   => t('Log summary data, such as average and maximum page generation times and memory usage to APC, if installed. The summary will be stored in APC memory, and hence there is no load on the database. This logging to APC is suitable for most live sites, unless the number of unique page accesses is excessively high.'),
+  );
+
+  $disabled = TRUE;
+  if (performance_memcache_enabled()) {
+    $disabled = FALSE;
+  }
+
+  $form['mode']['performance_summary_memcache'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Summary logging (Memcached)'),
+    '#default_value' => variable_get('performance_summary_memcache', 0),
+    '#options'       => $options,
+    '#disabled'      => $disabled,
+    '#description'   => t('Log summary data, such as average and maximum page generation times and memory usage to Memcached, if installed. The summary will be stored in Memcached memory, and hence there is no load on the database. This logging to Memcached is suitable for most live sites, unless the number of unique page accesses is excessively high.'),
+  );
+  
+  $disabled = TRUE;
+  if (performance_zend_enabled()) {
+    $disabled = FALSE;
+  }
+
+  $form['mode']['performance_summary_zend'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Summary logging (Zend Datacache)'),
+    '#default_value' => variable_get('performance_summary_zend', 0),
+    '#options'       => $options,
+    '#disabled'      => $disabled,
+    '#description'   => t('Log summary data, such as average and maximum page generation times and memory usage to Zend Datacache, if installed. The summary will be stored in Zend Datacache memory, and hence there is no load on the database. This logging to Zend Datacache is suitable for most live sites, unless the number of unique page accesses is excessively high.'),
+  );
+
+  $form['other'] = array(
+    '#type'  => 'fieldset',
+    '#title' => t('Other'),
+    '#collapsible' => TRUE,
+  );
+
+  $form['other']['performance_query'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Database Query timing and count'),
+    '#default_value' => variable_get('performance_query', 0),
+    '#options'       => $options,
+    '#description'   => t('Log database query timing and query count for each page. This is useful to know if the bottleneck is in excessive database query counts, or the time required to execute those queries is high. Enabling this will incurr some memory overhead as query times and the actual query strings are cached in memory as arrays for each page, hence skewing the overall page memory reported.'),
+  );
+
+  $form['other']['performance_threshold_accesses'] = array(
+    '#type'          => 'select',
+    '#title'         => t('Accesses threshold'),
+    '#default_value' => variable_get('performance_threshold_accesses', 0),
+    '#options'       => array(0, 1, 2, 5, 10),
+    '#description'   => t('When displaying the summary report and using APC, only pages with the number of accesses larger than the specified threshold will be shown. Also, when cron runs, pages with that number of accesses or less will be removed, so as not to overflow APC\'s shared memory. This is useful on a live site with a high volume of hits. On a development site, you probably want this set to 0, so you can see all pages.'),
+  );
+
+  return system_settings_form($form);
+}
+
+/**
+ * Implementation of hook_boot().
+ */
+function performance_boot() {
+  register_shutdown_function('performance_shutdown');
+  if (variable_get('performance_query', 0)) {
+    //TODO: See if devel.module has changed this ...
+    @include_once DRUPAL_ROOT . '/includes/database/log.inc';
+    Database::startLog('performance', 'default');
+  }
+}
+
+/**
+ * Shutdown function that collects all performance data.
+ */
+function performance_shutdown() {
+  if (isset($_GET['q']) && ($_GET['q'])) {
+    // q= has a value, use that for the path
+    $path = $_GET['q'];
+  }
+  else {
+    // q= is empty, use whatever the site_frontpage is set to
+    $path = variable_get('site_frontpage', 'node');
+  }
+
+  $params = array(
+    'timer' => timer_read('page'),
+    'path'  => $path,
+  );
+
+  // Memory.
+  // No need to check if this function exists in D7, as it has a minimal
+  // requirement of PHP 5.2.5.
+  $params['mem'] = memory_get_peak_usage(TRUE);
+
+  // Query time and count
+  $query_count = $query_timer = $sum = 0;
+
+  if (variable_get('performance_query', 0)) {
+    // See http://drupal.org/node/1022204
+    $queries = Database::getLog('performance', 'default');
+    foreach ($queries as $query) {
+      $sum += $query['time'];
+      $query_count++;
+    }
+    $query_timer = round($sum * 1000, 2);
+  }
+
+  $params['query_count'] = $query_count;
+  $params['query_timer'] = $query_timer;
+
+  $anon = (!empty($data['anon']))? 'Yes' : 'No';
+
+  $header = array(
+    'path' => $path,
+    'timer' => $params['timer'],
+    'anon' => $anon,
+  );
+  // TODO: what is this for? Find out and document it, or remove it.
+  module_invoke_all('performance', 'header', $header);
+
+  if (variable_get('performance_detail', 0)) {
+    // TODO: what is this for? Find out and document it, or remove it.
+    $data = module_invoke_all('performance', 'data');
+    if (!empty($data[0])) {
+      $params['data'] = $data[0];
+    }
+    else {
+      $params['data'] = NULL;
+    }
+    performance_log_details($params);
+  }
+  else {
+    // TODO: what is this for? Find out and document it, or remove it.
+    module_invoke_all('performance', 'disable');
+  }
+
+  // See todo at top for an idea to 'clean this up'.
+  if (variable_get('performance_summary_db', 0)) {
+    performance_log_summary_db($params);
+  }
+
+  if (variable_get('performance_summary_apc', 0) && performance_apc_enabled()) {
+    performance_log_summary_apc($params);
+  }
+
+  if (variable_get('performance_summary_memcache', 0) && performance_memcache_enabled()) {
+    performance_log_summary_memcache($params);
+  }
+  
+  if (variable_get('performance_summary_zend', 0) && performance_zend_enabled()) {
+    performance_log_summary_zend($params);
+  }
+}
+
+/**
+ * Helper function to build summary data array.
+ *
+ * @param data array of previous data
+ * @param params array of current data
+ * @return array holding summary data
+ */
+function performance_build_summary_data($data, $params, $engine = '') {
+  if (is_object($data)) {
+    // Handle Memcache object.
+    if (isset($data->data)) {
+      $data = $data->data;
+    }
+    else {
+      // Handle DB result row object.
+      $data = get_object_vars($data);
+    }
+  }
+
+  if ($data) {
+    $type = 'existing';
+    $data = array(
+      'last_access'     => REQUEST_TIME,
+      'bytes_max'       => max($params['mem'], $data['bytes_max']),
+      'bytes_avg'       => ($data['bytes_avg'] + $params['mem']) / 2,
+      'ms_max'          => max($params['timer'], $data['ms_max']),
+      'ms_avg'          => ($data['ms_avg'] + $params['timer']) / 2,
+      'query_timer_max' => max($params['query_timer'], $data['query_timer_max']),
+      'query_timer_avg' => ($data['query_timer_avg'] + $params['query_timer']) / 2,
+      'query_count_max' => max($params['query_count'], $data['query_count_max']),
+      'query_count_avg' => ($data['query_count_avg'] + $params['query_count']) / 2,
+      'num_accesses'    => $data['num_accesses'] + 1,
+      'path'            => $data['path'],
+    );
+
+    // TODO: this is a quick fix. These lines broke DB summary logging!
+    // See if zend really needs this!
+    if ($engine == 'zend') {
+      $data['created'] = $data['created'];
+      $data['updated'] = REQUEST_TIME;
+    }
+  }
+  else {
+    $type = 'new';
+    $data = array(
+      'last_access'     => REQUEST_TIME,
+      'bytes_max'       => $params['mem'],
+      'bytes_avg'       => $params['mem'],
+      'ms_max'          => (int)$params['timer'],
+      'ms_avg'          => (int)$params['timer'],
+      'query_timer_max' => $params['query_timer'],
+      'query_timer_avg' => $params['query_timer'],
+      'query_count_max' => (int)$params['query_count'],
+      'query_count_avg' => (int)$params['query_count'],
+      'num_accesses'    => 1,
+      'path'            => $params['path'],
+    );
+
+    // TODO: this is a quick fix. These lines broke DB summary logging!
+    // See if zend really needs this!
+    if ($engine == 'zend') {
+      $data['created'] = REQUEST_TIME;
+      $data['updated'] = REQUEST_TIME;
+    }
+  }
+
+  return array('data' => $data, 'type' => $type);
+}
+
+// --- APC ---
+
+/**
+ * Helper function to store summary data in APC.
+ */
+function performance_log_summary_apc($params = array()) {
+  $key = PERFORMANCE_KEY . $params['path'];
+  $result = performance_build_summary_data(apc_fetch($key), $params);
+  apc_store($key, $result['data']);
+}
+
+/**
+ * Helper function to get all Performance logging APC keys.
+ *
+ * @param $timestamp unix timestamp to start fetching data from
+ * @return $key_list list of APC keys
+ */
+function performance_apc_list_all($timestamp = 0) {
+  $key_list = array();
+  $list = apc_cache_info('user');
+
+  if (!empty($list['cache_list'])) {
+    foreach ($list['cache_list'] as $cache_id => $cache_data) {
+      $regex = '/^' . PERFORMANCE_KEY . '/';
+      // creation_time and mtime are always the same in our case.
+      if (preg_match($regex, $cache_data['info']) && $cache_data['creation_time'] >= $timestamp) {
+        $key_list[] = $cache_data['info'];
+      }
+    }
+  }
+
+  return $key_list;
+}
+
+/**
+ * Helper function to check if APC is available.
+ */
+function performance_apc_enabled() {
+  global $conf;
+
+  if (function_exists('apc_cache_info') && !function_exists('zend_shm_cache_store')) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Helper function to get data from APC.
+ *
+ * @param $timestamp unix timestamp to start fetching data from
+ * @return array of fetched data
+ */
+function performance_apc_get_data($timestamp = 0) {
+  $data_list = array();
+
+  $list = performance_apc_list_all($timestamp);
+  foreach ($list as $key) {
+    $data_list[] = apc_fetch($key);
+  }
+
+  return $data_list;
+}
+
+/**
+ * Helper function to cleanup APC data.
+ */
+function performance_apc_prune($timestamp = 0) {
+  if (!variable_get('performance_summary_apc', 0) && !performance_apc_enabled()) {
+    // APC not enabled, nothing to do...
+    return;
+  }
+
+  // Get all entries in APC's user cache.
+  $list = performance_apc_list_all();
+  if (!count($list)) {
+    // Nothing stored yet.
+    return;
+  }
+
+  foreach ($list as $key) {
+    if ($data = apc_fetch($key)) {
+      if ($data['last_access'] <= $timestamp) {
+        apc_delete($key);
+      }
+    }
+  }
+}
+
+// --- Memcache ---
+
+/**
+ * Helper function to check if Memcache is available.
+ */
+function performance_memcache_enabled() {
+  global $conf;
+
+  if (function_exists('dmemcache_set') && isset($conf['memcache_bins']['cache_performance'])) {
+    return TRUE;
+  }
+  return FALSE;
+}
+
+/**
+ * Helper function to store summary data in Memcache.
+ */
+function performance_log_summary_memcache($params = array()) {
+  $key = PERFORMANCE_KEY . $params['path'];
+  $result = performance_build_summary_data(cache_get($key, PERFORMANCE_MEMCACHE_BIN), $params);
+
+  if ($result['type'] == 'new') {
+    // $keys_cache is used to easily retrieve our data later on.
+    if ($keys_cache = cache_get(PERFORMANCE_KEY, PERFORMANCE_MEMCACHE_BIN)) {
+      $keys_values = $keys_cache->data;
+    }
+    $keys_values[$key] = 1;
+    cache_set(PERFORMANCE_KEY, $keys_values, PERFORMANCE_MEMCACHE_BIN, CACHE_PERMANENT);
+  }
+
+  cache_set($key, $result['data'], PERFORMANCE_MEMCACHE_BIN, CACHE_PERMANENT);
+}
+
+/**
+ * Helper function to get data from memcache.
+ *
+ * @param $timestamp unix timestamp to start fetching data from
+ * @return array of fetched data
+ */
+function performance_memcache_get_data($timestamp = 0) {
+  $data_list = array();
+
+  if ($keys_cache = cache_get(PERFORMANCE_KEY, PERFORMANCE_MEMCACHE_BIN)) {
+    if ($keys_cache->data) {
+      foreach ($keys_cache->data as $key => $v) {
+        $cache = cache_get($key, PERFORMANCE_MEMCACHE_BIN);
+        if ($cache->created >= $timestamp) {
+          $data_list[] = $cache->data;
+        }
+      }
+    }
+  }
+
+  return $data_list;
+}
+
+/**
+ * Helper function to cleanup Memcache data.
+ */
+function performance_memcache_prune($timestamp = 0) {
+  if (variable_get('performance_summary_memcache', 0) && performance_memcache_enabled()) {
+    if ($keys_cache = cache_get(PERFORMANCE_KEY, PERFORMANCE_MEMCACHE_BIN)) {
+      if ($keys_cache->data) {
+        foreach ($keys_cache->data as $key => $v) {
+          $cache = cache_get($key, PERFORMANCE_MEMCACHE_BIN);
+          if ($cache->created <= $timestamp) {
+            cache_clear_all($key, PERFORMANCE_MEMCACHE_BIN);
+          }
+        }
+      }
+    }
+  }
+}
+
+// --- Zend Datacache ---
+
+/**
+ * Helper function to check if Memcache is available.
+ */
+function performance_zend_enabled() {
+  global $conf;
+
+  return function_exists('zend_shm_cache_store');
+}
+
+/**
+ * Helper function to store summary data in Zend Datacache.
+ */
+function performance_log_summary_zend($params = array()) {
+  $key = PERFORMANCE_ZEND_NAMESPACE . '::' . $params['path'];
+  $result = performance_build_summary_data(zend_shm_cache_fetch($key), $params, 'zend');
+
+  if ($result['type'] == 'new') {
+  $keys_values = zend_shm_cache_fetch(PERFORMANCE_ZEND_KEYS);
+  if ($keys_values === FALSE) $keys_values = array();
+
+  $keys_values[$key] = 1;
+    zend_shm_cache_store(PERFORMANCE_ZEND_KEYS, $keys_values, CACHE_PERMANENT);
+  }
+
+  zend_shm_cache_store($key, $result['data'], CACHE_PERMANENT);
+}
+
+/**
+ * Helper function to get data from Zend Datacache.
+ *
+ * @param $timestamp unix timestamp to start fetching data from
+ * @return array of fetched data
+ */
+function performance_zend_get_data($timestamp = 0) {
+  $data_list = array();
+
+  if ($keys_values = zend_shm_cache_fetch(PERFORMANCE_ZEND_KEYS)) {
+    if ($keys_values !== FALSE) {
+      foreach ($keys_values as $key => $v) {
+        $cache = zend_shm_cache_fetch($key);
+        if ($cache !== FALSE && $cache['created'] >= $timestamp) {
+          $data_list[] = $cache;
+        }
+      }
+    }
+  }
+
+  return $data_list;
+}
+
+/**
+ * Helper function to cleanup Zend Datacache data.
+ */
+function performance_zend_prune($timestamp = 0) {
+  if (variable_get('performance_summary_zend', 0) && performance_zend_enabled()) {
+    if ($keys_values = zend_shm_cache_fetch(PERFORMANCE_ZEND_KEYS)) {
+      if ($keys_values !== FALSE) {
+        foreach ($keys_cache as $key => $v) {
+          $cache = zend_shm_cache_fetch($key);
+          if ($cache['created'] <= $timestamp) {
+            zend_shm_cache_delete($key);
+          }
+        }
+      }
+    }
+  }
+}
+
+
+// --- Database ---
+
+/**
+ * Helper function to store summary data in database.
+ */
+function performance_log_summary_db($params = array()) {
+  //SQL: SELECT * FROM {performance_summary} WHERE path = '%s'
+  $row = db_select('performance_summary', 'p')
+    ->fields('p')
+    ->condition('path', $params['path'])
+    ->execute()
+    ->fetch();
+
+  $result = performance_build_summary_data($row, $params);
+
+  if ($result['type'] == 'existing') {
+    // Do not add the path field!
+    unset($result['data']['path']);
+    // Update record based on path.
+    db_update('performance_summary')
+      ->condition('path', $params['path'])
+      ->fields($result['data'])
+      ->execute();
+  }
+  else {
+    // First time we log this path, write fresh values
+    try {
+      db_insert('performance_summary')
+        ->fields($result['data'])
+        ->execute();
+    }
+    catch (Exception $e) {
+      drupal_set_message($e->getMessage(), 'error');
+    }
+  }
+}
+
+/**
+ * Helper function to get data from the database.
+ *
+ * @param header table header array
+ * @param pager_height int num of rows per page
+ * @param time unix timestamp to start fetching data
+ * @return array of fetched data
+ */
+function performance_db_get_data($header, $pager_height, $timestamp = 0) {
+  $data_list = array();
+
+  // SQL: SELECT * FROM {performance_summary}
+  $query = db_select('performance_summary', 'p')
+    ->fields('p');
+
+  if ($timestamp) {
+    // SQL: WHERE last_access >= %d
+    $query->condition('last_access', $timestamp, '>=');
+  }
+  else {
+    // Add pager and tablesort.
+    $query->extend('PagerDefault')
+      ->limit($pager_height)
+      ->extend('TableSort')
+      ->orderByHeader($header);
+  }
+
+  // Run the query.
+  $result = $query->execute();
+
+  foreach ($result as $row) {
+    $data_list[] = $row;
+  }
+
+  return $data_list;
+}
+
+/**
+ * Helper function to cleanup database data.
+ */
+function performance_db_prune($timestamp = 0) {
+  // Remove rows which have not been accessed since a certain timestamp
+  db_delete('performance_summary')
+    ->condition('last_access', $timestamp, '<=')
+    ->execute();
+
+  // Remove performance_detail rows on a daily basis
+  db_delete('performance_detail')
+    ->condition('timestamp', $timestamp, '<=')
+    ->execute();
+}
+
+/**
+ * Helper function to store detailed data in database.
+ */
+function performance_log_details($params = array()) {
+  global $user;
+
+  $fields = array(
+   'timestamp'   => REQUEST_TIME,
+   'bytes'       => $params['mem'],
+   'ms'          => (int)$params['timer'],
+   'query_count' => $params['query_count'],
+   'query_timer' => (int)$params['query_timer'],
+   'anon'        => ($user->uid) ? 0 : 1,
+   'path'        => $params['path'],
+   'data'        => $params['data'],
+  );
+
+  try {
+    db_insert('performance_detail')
+      ->fields($fields)
+      ->execute();
+  }
+  catch (Exception $e) {
+    drupal_set_message($e->getMessage(), 'error');
+  }
+}
+
+/**
+ * Summary page callback.
+ */
+// TODO: get tablesort to work for APC & Memcache (if that's even possible).
+function performance_view_summary() {
+  drupal_set_title(t('Performance logs: Summary'));
+
+  global
+    $pager_page_array,  // array of element-keyed current page - 1
+    $pager_total,       // array of element-keyed total number of pages
+    $pager_total_items, // array of element-keyed total number of data rows
+    $pager_limits;      // array of element-keyed number of rows per page
+
+  $sum = $rows = $data_list = array();
+
+  $sum[] = variable_get('performance_summary_db', 0);
+  $sum[] = variable_get('performance_summary_apc', 0);
+  $sum[] = variable_get('performance_summary_memcache', 0);
+  $sum[] = variable_get('performance_summary_zend', 0);
+  $go = array_sum($sum);
+
+  if (!$go) {
+    return t('Summary performance log is not enabled. Go to the !link to enable it.',
+      array('!link' => l(t('settings page'), 'admin/config/development/performance-logging'))
+    );
+  }
+
+  // Build table header.
+  $header = array();
+
+  $header[] =  array('data' => t('Path'),               'field' => 'path');
+  $header[] =  array('data' => t('Last access'),        'field' => 'last_access');
+  $header[] =  array('data' => t('# accesses'),         'field' => 'num_accesses');
+  $header[] =  array('data' => t('MB Memory (Max)'),    'field' => 'bytes_max');
+  $header[] =  array('data' => t('MB Memory (Avg)'),    'field' => 'bytes_avg');
+  $header[] =  array('data' => t('ms (Max)'),           'field' => 'ms_max');
+  $header[] =  array('data' => t('ms (Avg)'),           'field' => 'ms_avg');
+
+  if (variable_get('performance_query', 0)) {
+    $header[] = array('data' => t('Query ms (Max)'),    'field' => 'query_timer_max');
+    $header[] = array('data' => t('Query ms (Avg)'),    'field' => 'query_timer_avg');
+    $header[] = array('data' => t('Query Count (Max)'), 'field' => 'query_count_max');
+    $header[] = array('data' => t('Query Count (Avg)'), 'field' => 'query_count_avg');
+  }
+  $tablesort = tablesort_init($header);
+
+  $total_rows = $shown = $last_max = $total_bytes = $total_ms = $total_accesses = 0;
+  $last_min = REQUEST_TIME;
+
+  $threshold = variable_get('performance_threshold_accesses', 0);
+
+  $pager_height = 50;
+
+  // Get selected source.
+  if (isset($_GET['source'])) {
+    $source = check_plain($_GET['source']);
+  }
+  else if (variable_get('performance_summary_memcache', 0) && performance_memcache_enabled()) {
+    $source = 'memcache';
+  }
+  else if (variable_get('performance_summary_apc', 0) && performance_apc_enabled()) {
+    $source = 'APC';
+  }
+  else if (variable_get('performance_summary_zend', 0) && performance_zend_enabled()) {
+    $source = 'Zend';
+  }
+  else {
+    $source = 'database';
+  }
+
+  // Fetch data.
+  switch ($source) {
+    case 'memcache':
+      $data_list = performance_memcache_get_data();
+      break;
+    case 'APC':
+      $data_list = performance_apc_get_data();
+      break;
+    case 'Zend':
+      $data_list = performance_zend_get_data();
+      break;
+    default:
+      $data_list = performance_db_get_data($header, $pager_height);
+  }
+
+  // TODO: check if this works properly!
+  // Set up pager since this is not done automatically when not using DB.
+  if ($source != 'database' && $data_list) {
+    $page = isset($_GET['page']) ? sprintf('%d', $_GET['page']) : 0;
+
+    $pager_page_array  = array(0 => $page);
+    $pager_total_items = array(0 => count($data_list));
+    $pager_limits      = array(0 => $pager_height);
+    $pager_total       = array(0 => ceil($pager_total_items[0] / $pager_limits[0]));
+
+    // Extract the data subset we need.
+    $data_list = array_slice($data_list, $page * $pager_height, $pager_height);
+  }
+
+  // Format data into table.
+  foreach ($data_list as $data) {
+    // Cast to object because of the DB API now returning row objects by default.
+    $data = (object)$data;
+    $total_rows++;
+    $last_max = max($last_max, $data->last_access);
+    $last_min = min($last_min, $data->last_access);
+
+    // Calculate running averages.
+    $total_bytes += $data->bytes_avg;
+    $total_ms += $data->ms_avg;
+    $total_accesses += $data->num_accesses;
+
+    $row_data = array();
+    if ($data->num_accesses > $threshold) {
+      $shown++;
+      $row_data[] = check_plain($data->path);
+      $row_data[] = format_date($data->last_access, 'small');
+      $row_data[] = $data->num_accesses;
+      $row_data[] = number_format($data->bytes_max/1024/1024, 2);
+      $row_data[] = number_format($data->bytes_avg/1024/1024, 2);
+      $row_data[] = number_format($data->ms_max, 1);
+      $row_data[] = number_format($data->ms_avg, 1);
+      if (variable_get('performance_query', 0)) {
+        $row_data[] = number_format($data->query_timer_max, 1);
+        $row_data[] = number_format($data->query_timer_avg, 1);
+        $row_data[] = $data->query_count_max;
+        $row_data[] = $data->query_count_avg;
+      }
+    }
+    $rows[] = array('data' => $row_data);
+  }
+
+  $output = '';
+  if ($threshold) {
+    $output .= t('Showing !shown paths with more than !threshold accesses, out of !total total paths.',
+      array('!threshold' => $threshold, '!shown' => $shown, '!total' => $total_rows)) . '<br/>';
+  }
+  else {
+    $output .= t('Showing all !total paths.', array('!total' => $total_rows)) . '<br/>';
+  }
+
+  // Protect against divide by zero.
+  if ($total_rows > 0) {
+    $mb_avg = number_format($total_bytes/$total_rows/1024/1024, 1);
+    $ms_avg = number_format($total_ms/$total_rows, 2);
+  }
+  else {
+    $mb_avg = 'n/a';
+    $ms_avg = 'n/a';
+  }
+
+  $output .= t('Average memory per page: !mb_avg MB', array('!mb_avg' => $mb_avg)) . '<br/>';
+  $output .= t('Average duration per page: !ms_avg ms', array('!ms_avg' => $ms_avg)) . '<br/>';
+  $output .= t('Total number of page accesses: !accesses', array('!accesses' => $total_accesses)) . '<br/>';
+  $output .= t('First access: !access.', array('!access' => format_date($last_min, 'small'))) . '<br/>';
+  $output .= t('Last access: !access.',  array('!access' => format_date($last_max, 'small')));
+  $output .= performance_sources_switcher($source);
+
+  // Return a renderable array.
+  return array(
+    'general_info' => array(
+      '#prefix' => '<p>',
+      '#markup' => $output,
+      '#suffix' => '</p><p>&nbsp;</p>',
+    ),
+    'query_data_summary' => array(
+      '#theme' => 'table',
+      '#header' => $header,
+      '#rows' => $rows,
+      '#sticky' => TRUE,
+      '#empty' => t('No statistics available yet.'),
+    ),
+    'pager' => array(
+      '#theme' => 'pager',
+      '#quantity' => $pager_height,
+    ),
+  );
+}
+
+/**
+ * Helper function to output sources switcher on summary page.
+ * Made this function easily expandable to add additional souces. Just add one
+ * to the sources array and you're done.
+ *
+ * @param source currently enabled source as string
+ */
+// TODO: see todo at the top on how to improve this.
+function performance_sources_switcher($source) {
+  // t() only used on database, others should not be translatable!
+  $sources = array(
+    'database' => t('database'),
+  );
+  if (variable_get('performance_summary_memcache', 0) && performance_memcache_enabled()) {
+    $sources['memcache'] = 'Memcache';
+  }
+  if (variable_get('performance_summary_apc', 0) && performance_apc_enabled()) {
+    $sources['APC'] = 'APC';
+  }
+  if (variable_get('performance_summary_zend', 0) && performance_zend_enabled()) {
+    $sources['Zend'] = 'Zend Datacache';
+  }
+  $current = $sources[$source];
+  unset($sources[$source]);
+
+  // Build the switcher. Note that we do not keep the paging/filter settings as
+  // this will probably just cause confusion.
+  $switch = '';
+  if (count($sources) >= 1) {
+    foreach($sources as $src => $txt) {
+      $switch .= l($txt, 'admin/reports/performance-logging', array('query' => array('source' => $src))) . ' | ';
+    }
+
+    $switch = ' (switch to ' . rtrim($switch, ' |') . ')';
+  }
+
+  return '<br/><strong>' . t('Data source') . ':</strong> ' . $current . $switch;
+}
+
+/**
+ * Detail page callback.
+ */
+// TODO: get tablesort to work for APC & Memcache (if that's even possible).
+function performance_view_details() {
+  drupal_set_title(t('Performance logs: Details'));
+
+  if (!variable_get('performance_detail', 0)) {
+    return t('Detail performance log is not enabled. Go to the !link to enable it.', array('!link' => l(t('settings page'), 'admin/config/development/performance-logging')));
+  }
+
+  $header = array(
+    array('data' => t('#'),                     'field' => 'pid', 'sort' => 'desc'),
+    array('data' => t('Date'),                  'field' => 'timestamp'),
+    array('data' => t('Path'),                  'field' => 'path'),
+    array('data' => t('Memory (MB)'),           'field' => 'bytes'),
+    array('data' => t('ms (Total)'),            'field' => 'ms'),
+    array('data' => t('Anonymous?'),            'field' => 'anon'),
+  );
+
+  if (variable_get('performance_query', 0)) {
+    $header[] = array('data' => t('# Queries'), 'field' => 'query_count');
+    $header[] = array('data' => t('Query ms'),  'field' => 'query_timer');
+  }
+
+  $pager_height = 50;
+  $result = db_select('performance_detail', 'p')
+    ->fields('p')
+    ->extend('PagerDefault')
+    ->limit($pager_height)
+    ->extend('TableSort')
+    ->orderByHeader($header)
+    ->execute();
+
+  $rows = array();
+
+  foreach ($result as $data) {
+    $row_data = array();
+    $row_data[] = $data->pid;
+    $row_data[] = format_date($data->timestamp, 'small');
+    $row_data[] = check_plain($data->path);
+    $row_data[] = number_format($data->bytes/1024/1024, 2);
+    $row_data[] = $data->ms;
+    $row_data[] = ($data->anon) ? t('Yes') : t('No');
+
+    if (variable_get('performance_query', 0)) {
+      $row_data[] = $data->query_count;
+      $row_data[] = $data->query_timer;
+    }
+
+    $rows[] = array('data' => $row_data);
+  }
+
+  // Return a renderable array.
+  return array(
+    'query_data_detail' => array(
+      '#theme' => 'table',
+      '#header' => $header,
+      '#rows' => $rows,
+      '#sticky' => TRUE,
+      '#empty' => t('No log messages available.'),
+    ),
+    'pager' => array(
+      '#theme' => 'pager',
+      '#quantity' => $pager_height,
+    ),
+  );
+}
+
+/**
+ * Clear APC confirm form callback.
+ */
+function performance_clear_apc_confirm() {
+  $form['confirm'] = array(
+    '#value' => t('Confirm APC clear'),
+  );
+  return confirm_form(
+    $form,
+    t('Are you sure you want to clear the APC statistics for this site?'),
+    'admin/config/development/performance-logging',
+    t('This will clear all the collected performance statistics stored in APC. This action cannot be undone.'),
+    t('Clear'),
+    t('Cancel'));
+}
+
+/**
+ * Clear APC confirm form submit handler.
+ */
+function performance_clear_apc_confirm_submit($form_id, &$form) {
+  if (!performance_apc_enabled()) {
+    drupal_set_message(t('APC is not enabled. Nothing to do...'), 'status', FALSE);
+    drupal_goto('admin/config/development/performance-logging');
+    return;
+  }
+
+  $list = performance_apc_list_all();
+  if (!count($list)) {
+    // Nothing stored yet
+    return;
+  }
+
+  foreach ($list as $key) {
+    if ($data = apc_fetch($key)) {
+      apc_delete($key);
+    }
+  }
+
+  drupal_set_message(t('Performance statistics collected in APC have been cleared.'), 'status', FALSE);
+  drupal_goto('admin/config/development/performance-logging');
+}
+
+/**
+ * Clear Memcache confirm form callback.
+ */
+function performance_clear_memcache_confirm() {
+  $form['confirm'] = array(
+    '#value' => t('Confirm Memcache clear'),
+  );
+  return confirm_form(
+    $form,
+    t('Are you sure you want to clear the Memcache statistics for this site?'),
+    'admin/config/development/performance-logging',
+    t('This will clear all the collected performance statistics stored in Memcache. This action cannot be undone.'),
+    t('Clear'),
+    t('Cancel'));
+}
+
+/**
+ * Clear Memcache confirm form submit handler.
+ */
+function performance_clear_memcache_confirm_submit($form, &$form_state) {
+  if (!performance_memcache_enabled()) {
+    drupal_set_message(t('Memcache is not enabled. Nothing to do...'), 'status', FALSE);
+    drupal_goto('admin/config/development/performance-logging');
+    return;
+  }
+
+  // We have to iterate over all entries and delete them, reaching down 
+  // the API stack and calling dmemcache_delete directly.
+  // This is suboptimal, but there is no other alternative.
+  if ($keys_cache = cache_get(PERFORMANCE_KEY, PERFORMANCE_MEMCACHE_BIN)) {
+    if ($keys_cache->data) {
+      foreach ($keys_cache->data as $key => $v) {
+        dmemcache_delete($key, PERFORMANCE_MEMCACHE_BIN);
+      }
+      dmemcache_delete(PERFORMANCE_KEY, PERFORMANCE_MEMCACHE_BIN);
+    }
+  }
+
+  drupal_set_message(t('Performance statistics collected in Memcache have been cleared.'), 'status', FALSE);
+  drupal_goto('admin/config/development/performance-logging');
+}
+
+/**
+ * Clear Zend Datacache confirm form callback.
+ */
+function performance_clear_zend_confirm() {
+  $form['confirm'] = array(
+    '#value' => t('Confirm Zend Datacache clear'),
+  );
+  return confirm_form(
+    $form,
+    t('Are you sure you want to clear the Zend Datacache statistics for this site?'),
+    'admin/config/development/performance-logging',
+    t('This will clear all the collected performance statistics stored in Zend Datacache. This action cannot be undone.'),
+    t('Clear'),
+    t('Cancel'));
+}
+
+/**
+ * Clear Zend Datacache confirm form submit handler.
+ */
+function performance_clear_zend_confirm_submit($form, &$form_state) {
+  if (!performance_zend_enabled()) {
+    drupal_set_message(t('Zend Datacache is not enabled. Nothing to do...'), 'status', FALSE);
+    drupal_goto('admin/config/development/performance-logging');
+    return;
+  }
+
+  zend_shm_cache_clear(PERFORMANCE_ZEND_NAMESPACE);
+
+  drupal_set_message(t('Performance statistics collected in Zend Datacache have been cleared.'), 'status', FALSE);
+  drupal_goto('admin/config/development/performance-logging');
+}
+
+/**
+ * Gather performance data for external modules
+ */
+function performance_gather_summary_data() {
+  // Find out if we have what we need enabled.
+  $sum = $data_list = array();
+
+  $sum[] = variable_get('performance_summary_db', 0);
+  $sum[] = variable_get('performance_summary_apc', 0);
+  $sum[] = variable_get('performance_summary_memcache', 0);
+  $sum[] = variable_get('performance_summary_zend', 0);
+  $go = array_sum($sum);
+
+  if (!$go) {
+    return FALSE;
+  }
+
+  // Initialize variables.
+  $total_rows = $total_bytes = $total_ms = $total_accesses = $total_query_time = $total_query_count = 0;
+
+  // Check which data store to use.
+  $timestamp = REQUEST_TIME - 15*60;
+  if (variable_get('performance_summary_memcache', 0) && performance_memcache_enabled()) {
+    $data_list = performance_memcache_get_data($timestamp);
+  }
+  else if (variable_get('performance_summary_apc', 0) && performance_apc_enabled()) {
+    $data_list = performance_apc_get_data($timestamp);
+  }
+  else if (variable_get('performance_summary_zend', 0) && performance_zend_enabled()) {
+    $data_list = performance_zend_get_data($timestamp);
+  }
+  else {
+    $data_list = performance_db_get_data(NULL, NULL, $timestamp);
+  }
+
+  foreach ($data_list as $data) {
+    // Cast to object because of the DB API now returning row objects by default.
+    $data = (object)$data;
+    $total_rows++;
+
+    // Calculate running averages.
+    $total_bytes += $data->bytes_avg;
+    $total_ms += $data->ms_avg;
+    $total_accesses += $data->num_accesses;
+    $total_query_time += $data->query_timer_avg;
+    $total_query_count += $data->query_count_avg;
+  }
+
+  $results = array();
+  $results['total_accesses'] = $total_accesses;
+  // Protect against divide by zero.
+  if ($total_rows > 0) {
+    $results['ms_avg']      = number_format($total_ms          / $total_rows, 1, '.', '');
+    $results['ms_query']    = number_format($total_query_time  / $total_rows, 1, '.', '');
+    $results['query_count'] = number_format($total_query_count / $total_rows, 2, '.', '');
+    $results['mb_avg']      = number_format($total_bytes       / $total_rows/1024/1024, 1);
+  }
+  else {
+    $results['ms_avg'] = '';
+    $results['ms_query'] = '';
+    $results['mb_avg'] = '';
+    $results['query_count'] = '';
+  }
+
+  return $result;
+}
+
+/**
+ * Implementation of hook_nagios_info().
+ */
+function performance_nagios_info() {
+  return array(
+    'name'   => 'Performance logging',
+    'id'     => 'PERF',
+  );
+}
+
+/**
+ * Implementation of hook_nagios().
+ */
+function performance_nagios() {
+  $info = performance_nagios_info();
+  $data = performance_gather_summary_data();
+
+  if (!$data) {
+    return array(
+      $info['id'] => array(
+        'status' => NAGIOS_STATUS_UNKNOWN,
+        'type'   => 'perf',
+        'text'   => t('Performance logging is not enabled'),
+      ),
+    );
+  }
+
+  $status = NAGIOS_STATUS_OK;
+
+  return array(
+    'ACC' => array(
+      'status' => $status,
+      'type'   => 'perf',
+      'text'   => $data['total_accesses'],
+    ),
+    'MS' => array(
+      'status' => $status,
+      'type'   => 'perf',
+      'text'   => $data['ms_avg'],
+    ),
+    'MMB' => array(
+      'status' => $status,
+      'type'   => 'perf',
+      'text'   => $data['mb_avg'],
+    ),
+    'QRC' => array(
+      'status' => $status,
+      'type'   => 'perf',
+      'text'   => $data['query_count'],
+    ),
+    'QRT' => array(
+      'status' => $status,
+      'type'   => 'perf',
+      'text'   => $data['ms_query'],
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_prod_check_alter().
+ */
+function performance_prod_check_alter(&$checks) {
+  $checks['perf_data']['functions']['performance_prod_check_return_data'] = 'Performance logging';
+}
+
+/**
+ * Return performance data to Production Monitor.
+ */
+function performance_prod_check_return_data() {
+  $data = performance_gather_summary_data();
+
+  if (!$data) {
+    return array(
+      'performance' => array(
+        'title' => 'Performance logging',
+        'data' => 'No performance data found.',
+      ),
+    );
+  }
+
+  return array(
+    'performance' => array(
+      'title' => 'Performance logging',
+      'data' => array(
+        'Total number of page accesses' => array($data['total_accesses']),
+        'Average duration per page' => array($data['ms_avg'], 'ms'),
+        'Average memory per page' => array($data['mb_avg'], 'MB'),
+        'Average querycount' => array($data['query_count']),
+        'Average duration per query' => array($data['ms_query'], 'ms'),
+      ),
+    ),
+  );
+}

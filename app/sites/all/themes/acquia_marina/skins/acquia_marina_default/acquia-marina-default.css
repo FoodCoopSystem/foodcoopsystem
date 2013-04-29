@@ -1,0 +1,266 @@
+/* @group Title Styles
+/-------------------------------------------------------------- */
+
+/* Marina - Title - Rounded Blue */
+
+.marina-title-rounded-blue h2.block-title,
+.marina-title-rounded-blue h2.pane-title {
+  background: #4183AF;
+  border-radius: 4px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+/* Marina - Title - Rounded Green */
+
+.marina-title-rounded-green h2.block-title,
+.marina-title-rounded-green h2.pane-title {
+  background: #94CE18;
+  border-radius: 4px;
+  -moz-border-radius: 4px;
+  -webkit-border-radius: 4px;
+}
+
+/* Marina - Title - Green */
+
+.marina-title-green h2.block-title,
+.marina-title-green h2.pane-title {
+  color: #94CE18;
+}
+
+.marina-title-rounded-blue h2.block-title,
+.marina-title-rounded-green h2.block-title,
+.marina-title-rounded-blue h2.pane-title,
+.marina-title-rounded-green h2.pane-title {
+  color: #fff;
+  margin: 0 0 8px 0;
+  padding: 8px;
+  text-align: left;
+  text-shadow: 1px 1px #545454;
+}
+
+.ie6 .marina-title-rounded-blue h2.block-title,
+.ie6 .marina-title-rounded-green h2.block-title {
+  width: auto;
+}
+
+.marina-gradient-rounded-corners.marina-title-rounded-blue h2.block-title,
+.marina-gradient-rounded-corners.marina-title-rounded-green h2.block-title,
+.marina-gradient-rounded-corners.marina-title-rounded-blue h2.pane-title,
+.marina-gradient-rounded-corners.marina-title-rounded-green h2.pane-title {
+  margin: -8px -8px 16px -8px;
+}
+
+.ie6 .marina-rounded-corners.marina-title-rounded-blue h2.block-title,
+.ie6 .marina-rounded-corners.marina-title-rounded-green h2.block-title,
+.ie7 .marina-rounded-corners.marina-title-rounded-blue h2.block-title,
+.ie7 .marina-rounded-corners.marina-title-rounded-green h2.block-title {
+  margin-top: 0;
+}
+
+.ie6 .marina-rounded-corners .inner-wrapper .inner-inner,
+.ie7 .marina-rounded-corners .inner-wrapper .inner-inner {
+  padding-top: 0;
+}
+
+/* @end title styles */
+
+/* @group List Styles 
+/-------------------------------------------------------------- */
+
+/* Marina - List - Raquo */
+
+.block.marina-list-raquo ul {
+  margin-left: 0;
+}
+
+.marina-list-raquo ul li {
+  background: url(images/raquo.png) no-repeat 0 8px;
+  display: block;
+  font-weight: bold;
+  list-style: none;
+  list-style-image: none;
+  margin: 0;
+  padding-left: 15px;
+}
+
+.marina-list-raquo ul li a.active {
+  color: #144A6E;
+  text-decoration: underline;
+}
+
+.marina-list-raquo ul li ul {
+  margin-left: 15px;
+}
+
+/* Marina - List - Green arrow */
+
+.marina-list-arrow-green .content ul li {
+  background: url(images/green-checkmark.png) no-repeat 0 5px;
+  font-family: "Myriad Pro", "Myriad Web Pro Regular", "Lucida Grande", Geneva, Trebuchet MS, sans-serif;
+  font-size: 150%; /* 18px/12px */
+  line-height: 100%;
+  list-style-image: none;
+  list-style-type: none;
+  padding: 10px 0 15px 40px;
+}
+
+/* @end list styles */
+
+/* @group Icons 
+/-------------------------------------------------------------- */
+
+/* Marina - Icons */
+
+.title-icon {
+  position: relative;
+}
+
+.title-icon h2.block-title {
+  padding-left: 50px;
+  text-align: right;
+}
+
+.title-icon .block-icon {
+  height: 48px;
+  left: 0;
+  position: absolute;
+  top: 0;
+  width: 48px;
+  z-index: 100;
+}
+
+.ie6 .title-icon .block-icon,
+.ie7 .title-icon .block-icon {
+  left: 4px;
+  top: 2px;
+}
+
+.ie8 .title-icon .block-icon {
+  top: 0;
+}
+
+.icon-bubble .block-icon {
+  background: url(images/icons/icon-bubble.png) no-repeat 0 50%;
+}
+
+.icon-calendar .block-icon {
+  background: url(images/icons/icon-calendar.png) no-repeat 0 50%;
+}
+
+.icon-chalkboard .block-icon {
+  background: url(images/icons/icon-chalkboard.png) no-repeat 0 50%;
+}
+
+.icon-chatbubbles .block-icon,
+.comment-icon-chatbubbles {
+  background: url(images/icons/icon-chatbubbles.png) no-repeat 0 50%;
+}
+
+.icon-colorchart .block-icon {
+  background: url(images/icons/icon-colorchart.png) no-repeat 0 50%;
+}
+
+.icon-flag .block-icon {
+  background: url(images/icons/icon-flag.png) no-repeat 0 50%;
+}
+
+.icon-gears .block-icon {
+  background: url(images/icons/icon-gears.png) no-repeat 0 50%;
+}
+
+.icon-home .block-icon {
+  background: url(images/icons/icon-home.png) no-repeat 0 50%;
+}
+
+.icon-keys .block-icon {
+  background: url(images/icons/icon-keys.png) no-repeat 0 50%;
+}
+
+.icon-newspaper .block-icon {
+  background: url(images/icons/icon-newspaper.png) no-repeat 0 50%;
+}
+
+.icon-notepad .block-icon {
+  background: url(images/icons/icon-notepad.png) no-repeat 0 50%;
+}
+
+.icon-photo .block-icon {
+  background: url(images/icons/icon-photo.png) no-repeat 0 50%;
+}
+
+.icon-rss .block-icon {
+  background: url(images/icons/icon-rss.png) no-repeat 0 50%;
+}
+
+.icon-search .block-icon {
+  background: url(images/icons/icon-search.png) no-repeat 0 50%;
+}
+
+.icon-star .block-icon {
+  background: url(images/icons/icon-star.png) no-repeat 0 50%;
+}
+
+/* @end icons*/
+
+/* @group Background styles 
+/-------------------------------------------------------------- */
+
+/* Marina Rounded corners w/ gradient */
+
+.marina-gradient-rounded-corners .inner {
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0px 0px 3px #999;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  -moz-box-shadow: 0px 0px 3px #999;
+  -webkit-box-shadow: 0px 0px 3px #999;
+}
+
+.marina-gradient-rounded-corners .inner .inner {
+  background: #fff;
+}
+
+.marina-gradient-rounded-corners .inner-wrapper {
+  color: #666;
+  padding: 3px;
+  position: relative;
+}
+
+.marina-gradient-rounded-corners .inner-wrapper .inner-inner {
+  background: #ffffff; /* old browsers */
+  background: -moz-linear-gradient(top, #ffffff 0%, #f1f5f8 100%);  /* firefox */
+  background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#ffffff), color-stop(100%,#f1f5f8));  /* webkit */
+  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#f1f5f8',GradientType=0 );  /* ie */
+  background: -o-linear-gradient(top, #ffffff 0%, #f1f5f8 100%);  /* opera */
+  padding: 8px;
+}
+
+/* Marina rounded corners and gray background */
+
+.marina-gray-rounded-corners .inner {
+  background: #fff;
+  border-radius: 5px;
+  -moz-border-radius: 5px;
+  -webkit-border-radius: 5px;
+  background-color: #e1e1e1;
+  border: 1px solid #ccc;
+  color: #333;
+  padding: 10px;
+}
+
+.preface-top .marina-gray-rounded-corners .inner a,
+.postscript-bottom .marina-gray-rounded-corners .inner a {
+  color: #27638C;
+}
+
+.header-group .marina-gray-rounded-corners .inner {
+  border-radius: 0 0 5px 5px;
+  -moz-border-radius: 0 0 5px 5px;
+  -webkit-border-radius: 0 0 5px 5px;
+  margin-top: -21px;
+  border-top: none;
+}
+
+/* @end background styles */

@@ -1,0 +1,62 @@
+
+/**
+ * Basic Layout Styles
+ */
+#page-wrapper {
+  margin: 0px auto;
+  padding: 0px;
+  width: 100%;
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+#page {
+  padding: 0px;
+}
+#main-wrapper {
+  width: 100%;
+  position: relative;
+}
+#main {
+}
+
+body {
+  min-width: 700px;
+}
+#content,
+#sidebar-first,
+#sidebar-second,
+#sidebar-first-r,
+#sidebar-second-r {
+  display: inline;
+  float: left;
+  position: relative;
+  /*overflow: hidden; Removed for Superfish */
+}
+
+#footer-columns {
+  width: 100%;
+}
+#footer-column-wrapper {
+  float: left;
+}
+#footer-column {
+  padding: 10px;
+  margin: 0px 5px 5px 5px;
+  text-align: left;
+}
+
+#top-columns,
+#bottom-columns {
+  width: 100%;
+  overflow: hidden;
+}
+.column-block-wrapper {
+  float: left;
+}
+.column-block {
+  padding: 10px;
+  margin: 0px 5px 5px 5px;
+  text-align: left;
+  margin: 0px;
+}
+

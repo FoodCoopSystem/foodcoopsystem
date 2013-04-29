@@ -1,0 +1,578 @@
+<?php
+
+/**
+ * @file
+ * Role Expire module
+ *
+ * Enables user roles to expire on given time.
+ */
+
+
+/*******************************************************************************
+ * API functions
+ ******************************************************************************/
+
+/**
+ * API function; Get expiration time of a user role.
+ * @param $uid
+ *   User ID.
+ * @param $rid
+ *   Role ID.
+ * @return
+ *  Array with the expiration time.
+ */
+function role_expire_get_user_role_expiry_time($uid, $rid) {
+  $result = db_query("SELECT expiry_timestamp FROM {role_expire} WHERE uid = :uid AND rid = :rid", array(':uid' => $uid, ':rid' => $rid))->fetchField();
+  return (!empty($result)) ? $result : '';
+}
+
+/**
+ * API function; Get expiration of all roles of a user.
+ * @param $uid
+ *   User ID.
+ * @return
+ *  Array with the expiration time.
+ */
+function role_expire_get_all_user_records($uid) {
+  $return = array();
+  $result = db_query("SELECT rid, expiry_timestamp FROM {role_expire} WHERE uid = :uid", array(':uid' => $uid));
+  foreach ($result as $row) {
+    $return[$row->rid] = $row->expiry_timestamp;
+  }
+  return $return;
+}
+
+/**
+ * API function; Delete a record from the database.
+ *
+ * @param $uid
+ *   User ID.
+ * @param $rid
+ *   Role ID.
+ * @return
+ */
+function role_expire_delete_record($uid, $rid) {
+  db_delete('role_expire')
+  ->condition('uid', $uid)
+  ->condition('rid', $rid)
+  ->execute();
+}
+/**
+ * API function; Delete all user expirations.
+ *
+ * @param $uid
+ *   User ID.
+ * @return
+ */
+function role_expire_delete_user_records($uid) {
+  db_delete('role_expire')
+  ->condition('uid', $uid)
+  ->execute();
+}
+
+
+/**
+ * API function; Insert or update a record in the database.
+ *
+ * @param $uid
+ *   User ID.
+ * @param $rid
+ *   Role ID.
+ * @param $expiry_time
+ *   The expiration timestamp.
+ */
+function role_expire_write_record($uid, $rid, $expiry_timestamp) {
+  $existing = db_query("SELECT expiry_timestamp FROM {role_expire} WHERE uid = :uid AND rid = :rid", array(':uid' => $uid, ':rid' => $rid))->fetchField();
+  if ($existing && $expiry_timestamp != $existing) {
+    $result =  db_update('role_expire')
+               ->fields(array(
+                 'expiry_timestamp' => $expiry_timestamp,
+               ))
+               ->condition('uid', $uid)
+               ->condition('rid', $rid)
+               ->execute();
+  }
+  elseif ($existing == FALSE) {
+    $id = db_insert('role_expire')
+          ->fields(array(
+            'uid' => $uid,
+            'rid' => $rid,
+            'expiry_timestamp' => $expiry_timestamp,
+          ))
+          ->execute();
+  }
+}
+
+
+/**
+ * API function; Get the default duration for a role.
+ * @param $rid
+ *   Required. The role_id to check.
+ * @return
+ *  String containing the strtotime compatible default duration of the role
+ *  or empty string if not set.
+ */
+function role_expire_get_default_duration($rid) {
+  $result = db_query("SELECT duration FROM {role_expire_length} WHERE rid = :rid", array(':rid' => $rid))->fetchField();
+  return (!empty($result)) ? $result : '';
+}
+
+
+/**
+ * API function; Set the default expiry duration for a role.
+ *
+ * @param $rid
+ *   Role ID.
+ * @param $duration
+ *   The strtotime-compatible duration string.
+ */
+function role_expire_set_default_duration($rid, $duration) {
+
+  if (!empty($duration)) {
+    $result = db_update('role_expire_length')
+              ->fields(array('duration' => check_plain($duration),))
+              ->condition('rid', $rid)
+              ->execute();
+
+    if (!$result) {
+      $id = db_insert('role_expire_length')
+            ->fields(array(
+              'rid' => $rid,
+              'duration' => check_plain($duration),
+            ))
+            ->execute();
+    }
+  }
+}
+
+/**
+ * API function; Delete default duration(s) for a role.
+ * @param $rid
+ *   Required. The role_id to remove.
+ */
+function role_expire_delete_default_duration($rid) {
+  db_delete('role_expire_length')
+  ->condition('rid', $rid)
+  ->execute();
+}
+
+/**
+ * API function; Get all records that should be expired.
+ *
+ * @param $time
+ *   Optional. The time to check, if not set it will check current time.
+ */
+function role_expire_get_expired($time = '') {
+  $return = array();
+  if (!$time) {
+    $time = REQUEST_TIME;
+  }
+  $result = db_query("SELECT rid, uid, expiry_timestamp FROM {role_expire} WHERE expiry_timestamp <= :expiry_timestamp", array(':expiry_timestamp' => $time));
+  foreach ($result as $row) {
+    $return[] = $row;
+  }
+  return $return;
+}
+
+
+/*******************************************************************************
+ * Hook implementations
+ ******************************************************************************/
+
+/**
+ * Implements hook_views_api().
+ */
+function role_expire_views_api() {
+  // We can't just return "what is the currently installed views API version!
+  // We have to specify which version of the API we designed this implementation
+  // around.
+  // return array("api" => views_api_version());
+  return array('api' => '3.0');
+}
+
+/**
+ * Implements hook_migrate_init().
+ */
+function role_expire_migrate_init() {
+  // Don't load migration support unless we need it
+  $path = drupal_get_path('module', 'role_expire') . '/role_expire.migrate.inc';
+  include_once DRUPAL_ROOT . '/' . $path;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function role_expire_permission() {
+  return array(
+    'administer role expire' => array(
+      'title' => t('administer role expire'),
+      'description' => t('For each role, manage default role expiration dates (admin/people/permissions/roles/edit/#) and user role expiration dates (user/#/edit).'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_FORM-ID_alter().
+ */
+function role_expire_form_user_register_form_alter(&$form, $form_state) {
+  $form = array_merge_recursive($form, role_expire_add_expiration_input());
+}
+
+/**
+ * Implements hook_form_FORM-ID_alter().
+ */
+function role_expire_form_user_profile_form_alter(&$form, $form_state) {
+  $form = array_merge_recursive($form, role_expire_add_expiration_input($form['#user']));
+}
+
+/**
+ * Implements hook_form_FORM-ID_alter().
+ */
+function role_expire_form_user_admin_role_alter(&$form, $form_state) {
+  $form['role_expire'] = array(
+    '#title' => t("Default duration for the role %role",
+      array('%role' => drupal_ucfirst($form['name']['#default_value']))),
+    '#type' => 'textfield',
+    '#size' => 10,
+    '#default_value' => role_expire_get_default_duration($form['rid']['#value']),
+    '#maxlength' => 32,
+    '#attributes' => array('class' => array('role-expire-role-expiry')),
+    '#description' => t('Enter the time span you want to set as the default duration for this role. Examples: 12 hours, 1 day, 3 days, 4 weeks, 3 months, 1 year. Leave blank for no default duration. (If you speak php, this value may be any !l-compatible relative form.)',
+            array('!l' => l('strtotime', 'http://php.net/manual/en/function.strtotime.php'))
+            )
+  );
+  // Reposition the submit button and delete.
+  $form['submit']['#weight'] = 2;
+  if (arg(4)) {
+    $form['delete']['#weight'] = 3;
+  }
+  $form['#validate'][] = 'role_expire_user_admin_role_validate';
+  $form['#submit'][] = 'role_expire_user_admin_role_submit';
+}
+
+/**
+ * Form validation handler invoked by role_expire_form_user_admin_role_alter.
+ * Ensure that the specified duration is a valid, relative, positive strtotime- 
+ * compatible string.
+ * @param $form
+ * @param $form_state
+ */
+function role_expire_user_admin_role_validate($form, &$form_state) {
+  if (!empty($form_state['values']['role_expire'])) {
+    // Capture the duration from the form
+    $duration_string = check_plain($form_state['values']['role_expire']);
+    // Make sure it's a *relative* duration string. That is, it will result in a
+    // different strtotime when a different 'now' value is used.
+    $now = time();
+    $timestamp = strtotime($duration_string,$now);
+    $timestamp2 = strtotime($duration_string,$now-100);
+    if ($timestamp===FALSE || $timestamp < 0) {
+      form_set_error('role_expire', 'Role expiry default duration must be a strtotime-compatible string.');
+    } // invalid format
+    elseif ($timestamp < $now) {
+      form_set_error('role_expire', 'Role expiry default duration must be a <strong>future</strong> strtotime-compatible string.');
+    } // in the past
+    elseif ($timestamp == $timestamp2) {
+      // This is an absolute (or special) timestamp. That's not allowed.
+      form_set_error('role_expire', 'Role expiry default duration must be a <strong>relative</strong> strtotime-compatible string.');
+    } // not relative
+  } // !empty
+}
+
+/**
+ * Form submit handler invoked by role_expire_form_user_admin_role_alter.
+ * Updates default duration in database.
+ */
+function role_expire_user_admin_role_submit($form, &$form_state) {
+  if ($form_state['values']['op'] == t('Delete role')) {
+    role_expire_delete_default_duration($form_state['values']['rid']);
+  }
+  elseif ($form_state['values']['op'] == t('Save role')) {
+
+    // If the form doesn't specify a default duration, then delete default duration.
+    // Otherwise, set the default duration to what's specified.
+    $new_default_duration = $form_state['values']['role_expire'];
+    if (is_numeric($new_default_duration) && $new_default_duration > 0) {
+      role_expire_set_default_duration($form_state['values']['rid'], $form_state['values']['role_expire']);
+      drupal_set_message('New default role expiration set.');
+    }
+    else {
+      role_expire_delete_default_duration($form_state['values']['rid']);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_update().
+ */
+function role_expire_user_update(&$edit, $account, $category) {
+  if ($category == 'account' && (user_access('administer role expire') || user_access('administer users'))) {
+
+    // Add roles expiry information for the user role.
+    foreach (array_keys($edit) as $name) {
+      if (strpos($name, 'role_expire_') === 0) {
+        $value = $edit[$name];
+        $rid = substr($name, strlen('role_expire_'));
+        if ($value != '' && array_key_exists($rid, $edit['roles'])) {
+          $expiry_timestamp = strtotime($value);
+          role_expire_write_record($account->uid, $rid, $expiry_timestamp);
+        }
+        else {
+          role_expire_delete_record($account->uid, $rid);
+        }
+      }
+    }
+
+    if (isset($edit['roles'])) {
+
+      // Add default expiration to any new roles that have been given to the user.
+      $new_roles = array_diff(array_keys($edit['roles']), array_keys($edit['original']->roles));
+      if (isset($new_roles)) {
+        // We have the new roles, loop over them and see whether we need to assign expiry to them.
+        foreach ($new_roles as $role_id) {
+          role_expire_process_default_role_duration_for_user($role_id, $account->uid);
+        }
+      }
+
+      // Remove expiration for roles that have been removed from the user.
+      $del_roles = array_diff(array_keys($edit['original']->roles), array_keys($edit['roles']));
+      if (isset($del_roles)) {
+        // We have the deleted roles, loop over them and remove their expiry info.
+        foreach ($del_roles as $role_id) {
+          role_expire_delete_record($account->uid, $role_id);
+        }
+      }
+
+    } // if edit[roles]
+
+  } // if category && user_access
+}
+
+
+/**
+ * Implements hook_user_insert().
+ */
+function role_expire_user_insert(&$edit, $account, $category) {
+
+  if ($category == 'account' && (user_access('administer role expire') || user_access('administer users'))) {
+
+    // This adds default expiration to any new roles that have been given to the user.
+    $new_roles = array_keys($edit['roles']);
+    // We have the new roles, loop over them and see whether we need to assign expiry to them.
+    foreach ($new_roles as $role_id) {
+      role_expire_process_default_role_duration_for_user($role_id, $account->uid);
+    }
+  }
+}
+
+/**
+ * Implements hook_user_cancel().
+ */
+function role_expire_user_cancel($edit, $account, $method) {
+  // Delete user records.
+  role_expire_delete_user_records($account->uid);
+}
+
+/**
+ * Implements hook_user_load().
+ */
+function role_expire_user_load($users) {
+  // We don't load the information to the user object. Other modules can use
+  // our API to query the information.
+
+  /**
+   * Load the starter roles into a static cache so it is easy to
+   * see what has changed later on.
+   * 
+   * TODO. Support multiple users that are being loaded here. Not sure yet
+   * what that means for Role Expire 7.
+   */
+  foreach ($users as $account) {
+    _role_static_user_roles($account->uid, $account->roles);
+  }
+
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function role_expire_user_view($account, $view_mode) {
+  global $user;
+  if (user_access('administer role expire') || user_access('administer users') || $user->uid == $account->uid) {
+    $roles = array();
+    $expiry_roles = role_expire_get_all_user_records($account->uid);
+    foreach ($account->roles as $key => $val) {
+      if (array_key_exists($key, $expiry_roles)) {
+        $roles[$key] =  t("%role role expiration date: %timedate", array('%role' => ucfirst($val), '%timedate' => format_date($expiry_roles[$key])));
+      }
+    }
+    if ($roles) {
+      $account->content['summary']['role_expire'] = array(
+          '#type' => 'user_profile_item',
+          '#title' => t('Role expiration'),
+          '#markup' => theme('item_list', array('items' => $roles)),
+          '#attributes' => array('class' => array('role-expiry-roles')),
+        );
+    }
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function role_expire_cron() {
+  if ($expires = role_expire_get_expired()) {
+    $roles = _role_expire_get_role();
+    foreach ($expires as $expire) {
+
+      // Remove the role expiration record from the role_expires table.
+      role_expire_delete_record($expire->uid, $expire->rid);
+
+      // Remove the role from the user.
+      // TODO Convert "user_load" to "user_load_multiple" if "$expire['uid']" is other than a uid.
+      // To return a single user object, wrap "user_load_multiple" with "array_shift" or equivalent.
+      // Example: array_shift(user_load_multiple(array(), $expire['uid']))
+      $account = user_load($expire->uid);
+
+      // If the account *does* exist, update it.
+      if (!empty($account)) {
+        $edit = $account->roles;
+        unset($edit[$expire->rid]);
+        // In the documentation for the role_expire implementation of hook_user we
+        // state to use $category = 'account'.  We don't do that here because
+        // that would cause the delete to occur twice.
+        user_save($account, array('roles' => $edit), NULL);
+
+        // Handle the bizarre case of role_expire not being a valid role.
+        $role_name = (isset($roles[$expire->rid])) ? $roles[$expire->rid] : t('-unset-');
+        watchdog('role expire',
+                'Removed role @role from user @account.',
+                array('@role' => $role_name, '@account' => $account->name)
+                );
+      }
+      else {
+
+        // The account doesn't exist. Database altered outside of Drupal.
+        // Throw a warning message.
+        watchdog('role expire',
+                'Data integrity warning: Role_expire table updated, but no user with uid @uid.',
+                array('@uid' => $expire->uid,),
+                WATCHDOG_WARNING
+                );
+      }
+    }
+  }
+}
+
+
+/**
+ * Add form element that accepts the role expiration time.
+ *
+ * @param $account
+ *   The user object.
+ * @return
+ *   Form element.
+ */
+function role_expire_add_expiration_input($account = NULL) {
+  $form = array();
+  if (user_access('administer users') || user_access('administer role expire')) {
+    drupal_add_js(drupal_get_path('module', 'role_expire') . '/role_expire.js');
+    $form['roles']['#attributes'] = array('class' => array('role-expire-roles'));
+
+    foreach (_role_expire_get_role() as $rid => $role) {
+      if (is_object($account) and array_key_exists('uid', $account)) {
+        $expiry_timestamp = role_expire_get_user_role_expiry_time($account->uid, $rid);
+      }
+      else {
+        $expiry_timestamp = '';
+      }
+
+      $form['role_expire_' . $rid] = array(
+        '#title' => t("%role role expiration date/time", array('%role' => drupal_ucfirst($role))),
+        '#type' => 'textfield',
+        '#default_value' => !empty($expiry_timestamp) ? date("Y-m-d H:i:s", $expiry_timestamp) : '',
+        '#attributes' => array('class' => array('role-expire-role-expiry')),
+        '#description' => t("Leave blank for default role expiry (never, or the duration you have set for the role), enter date and time in format: <em>yyyy-mm-dd hh:mm:ss</em> or use relative time i.e. 1 day, 2 months, 1 year, 3 years.")
+      );
+    }
+
+    $form['#validate'][] = '_role_expire_validate_role_expires';
+  }
+  return $form;
+}
+
+/*******************************************************************************
+ * Helper functions
+ ******************************************************************************/
+
+/**
+ * Helper function; Store user roles for this page request.
+ * @return
+ *   array of roles
+ */
+function _role_static_user_roles($id, $roles = '') {
+  static $user_roles = array();
+  if (!isset($user_roles[$id]) && is_array($roles)) {
+    $user_roles[$id] = $roles;
+  }
+  if (!isset($user_roles[$id])) {
+    return FALSE;
+  }
+  else {
+    return $user_roles[$id];
+  }
+
+}
+
+/**
+ * Helper function; Get valid roles.
+ * @return unknown_type
+ */
+function _role_expire_get_role() {
+  $roles = user_roles(TRUE);
+  unset($roles[DRUPAL_AUTHENTICATED_RID]);
+  return $roles;
+}
+
+/**
+ * Form validation handler for the role expiration on the user_profile_form().
+ *
+ * @see user_profile_form()
+ */
+function _role_expire_validate_role_expires(&$form, &$form_state) {
+
+  $time = REQUEST_TIME;
+
+  foreach ($form_state['values'] as $name => $value) {
+    if (strpos($name, 'role_expire_') === 0 && trim($value) != '')
+    {
+      $expiry_time = strtotime($value);
+      if (!$expiry_time) {
+        form_set_error($name, t("Role expiry is not in correct format."));
+      }
+      if ($expiry_time <= $time) {
+        form_set_error($name, t("Role expiry must be in the future."));
+      }
+    }
+  }
+}
+
+/**
+ * Sets the default role duration for the current user/role combination.
+ * @param $role_id
+ *   The ID of the role.
+ * @param $uid
+ *   The user ID.
+ */
+function role_expire_process_default_role_duration_for_user($role_id, $uid) {
+  // Does a default expiry exist for this role?
+  $default_duration = role_expire_get_default_duration($role_id);
+  if ($default_duration) {
+    $user_role_expiry = role_expire_get_user_role_expiry_time($uid, $role_id);
+    // If the expiry is empty then we act!.
+    if (!$user_role_expiry) {
+      // Use strtotime of default duration.
+      role_expire_write_record($uid, $role_id, strtotime($default_duration));
+    }
+  }
+}

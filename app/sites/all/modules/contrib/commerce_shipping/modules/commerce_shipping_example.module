@@ -1,0 +1,16 @@
+<?php
+
+/**
+ * @file
+ * Defines an example shipping method for testing and development.
+ */
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function commerce_shipping_example_ctools_plugin_directory($owner, $plugin_type) {
+  // Tell Ctools where our Commerce Shipping plugins are located.
+  if ($owner == 'commerce_shipping') {
+    return 'plugins/' . $plugin_type;
+  }
+}

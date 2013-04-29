@@ -1,0 +1,93 @@
+<?php
+/**
+ * @file
+ * Install, update and uninstall functions for the views_calc module.
+ *
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function views_calc_schema() {
+  $schema['views_calc_fields'] = array(
+    'fields' => array(
+      'cid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'disp-width' => '10',
+      ),
+      'label' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'format' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'custom' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'base' => array(
+        'type' => 'varchar',
+        'length' => '255',
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'tablelist' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'fieldlist' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+      'calc' => array(
+        'type' => 'text',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('cid'),
+    'indexes' => array(
+      'cid' => array('cid'),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_install();
+ */
+function views_calc_install() {
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function views_calc_uninstall() {
+  db_query("DROP TABLE {views_calc_fields}");
+
+  variable_del('views_calc_operators');
+}
+
+/**
+ * Implements hook_update_last_removed().
+ */
+function views_calc_last_removed() {
+  return 2;
+}
+
+/**
+ * Update views_calc_fields table to add a new base column.
+ */
+function views_calc_update_6000() {
+  db_add_field('views_calc_fields', 'base', array('type' => 'varchar', 'length' => '255', 'not null' => TRUE, 'default' => 'node'));
+  return t("Added base to views_calc_fields table.");
+}
+

@@ -1,0 +1,151 @@
+<?php
+
+function fpa_menu() {
+  $items = array();
+  
+  $items['fpa_modal/%fpa_js/permissions'] = array(
+      'title' => 'Permissions',
+      'page callback' => '_fpa_ctools',
+      'page arguments' => array(1),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
+
+function fpa_admin_paths() {
+  return array(
+    'fpa_modal/*/permissions' => FALSE,
+  );
+}
+
+function fpa_js_load($arg) {
+  if (module_exists('ctools')) {
+    return ctools_js_load($arg);
+  }
+  return 0;
+}
+
+function fpa_l($permission = '', $text = NULL, $options = array()) {
+  
+  // available modal modules in order of priority
+  $supported_modules = array(
+    //'dialog', // dialog api is buggy
+    'ctools',
+    'modalframe',
+  );
+  
+  if (is_null($text)) {
+    $text = t('Manage Permissions');
+  }
+  
+  // gets the most prefered modal method from the available methods
+  $modules = array_intersect($supported_modules, array_keys(module_list()));
+  $method = array_shift($modules);
+  
+  $path = 'fpa_modal/nojs/permissions';
+  $attributes = array();
+  $query = array('fpa_perm' => $permission, 'fpa_method' => $method);
+  
+  switch ($method) {
+    case 'dialog':
+      dialog_add_js();
+      $attributes['class'] = 'ctools-use-dialog';
+      break;
+    case 'ctools':
+      ctools_include('ajax');
+      ctools_include('modal');
+      ctools_modal_add_js();
+      $attributes['class'] = 'ctools-use-modal';
+      break;
+    case 'modalframe':
+      modalframe_parent_js();
+      drupal_add_js(drupal_get_path('module', 'fpa') . '/js/fpa.js');
+      $attributes['class'] = 'fpa_modalframe';
+      break;
+    default:
+      $path = 'admin/people/permissions';
+      $attributes['target'] = '_blank';
+      $query['fpa_method'] = '_blank';
+      break;
+  }
+  
+  $options = array_merge_recursive(array('query' => $query, 'attributes' => $attributes), $options);
+  
+  return l($text, $path, $options);
+}
+
+function fpa_fieldset($permission, &$parent_item, $group = array()) {
+  
+  $parent_item['fpa_fieldset'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Permissions'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+    '#description' => t('Clicking on this link will launch a modal/tab/window displaying the appropriate permissions.'),
+  );
+  
+  $parent_item['fpa_fieldset'] = array_merge_recursive($parent_item['fpa_fieldset'], $group);
+  
+  $parent_item['fpa_fieldset']['fpa'] = array(
+    '#type' => 'markup',
+    '#markup' => fpa_l($permission),
+  );
+  
+}
+
+function fpa_form_node_type_form_alter(&$form, &$form_state) {
+  if (!empty($form['type']['#default_value']) && user_access('administer permissions')) {
+    fpa_fieldset($form['#node_type']->type . ':', $form, array('#group' => 'additional_settings'));
+  }
+}
+
+function fpa_form_user_admin_permissions_alter(&$form, &$form_state) {
+  if (isset($_GET['fpa_method']) && $_GET['fpa_method'] == 'modalframe') {
+    modalframe_child_js();
+    $form['#submit'][] = '_fpa_modalframe_submit';
+  }
+  $fpa_module_path = drupal_get_path('module', 'fpa');
+  drupal_add_css($fpa_module_path .'/css/fpa.css');
+  drupal_add_js($fpa_module_path .'/js/fpa.js');
+  drupal_add_js(array('fpa' => array('perm' => isset($_GET['fpa_perm']) && $_GET['fpa_perm'] ? check_plain($_GET['fpa_perm']) : '')), array('type' => 'setting'));
+}
+
+function _fpa_modalframe_submit() {
+  modalframe_close_dialog();
+}
+
+function _fpa_ctools($js = NULL) {
+  // Need to include the file that contains the permissions form.
+  module_load_include('inc', 'user', 'user.admin');
+  
+  // Fall back if $js is not set.
+  if (!$js) {
+    return drupal_get_form('user_admin_permissions');
+  }
+
+  ctools_include('modal');
+  ctools_include('ajax');
+  $form_state = array(
+    'title' => t('Permissions'),
+    'ajax' => TRUE,
+  );
+  
+  switch ($_GET['fpa_method']) {
+    case 'dialog':
+      $output = dialog_get_form('user_admin_permissions', $form_state);
+      break;
+    case 'ctools':
+      $output = ctools_modal_form_wrapper('user_admin_permissions', $form_state);
+      break;
+  }
+  
+  if (!empty($form_state['executed'])) {
+    $output = array();
+    $output[] = ctools_ajax_command_reload();
+  }
+  
+  echo ajax_render($output);
+  exit;
+}

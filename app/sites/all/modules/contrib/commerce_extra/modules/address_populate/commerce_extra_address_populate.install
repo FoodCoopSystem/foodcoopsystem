@@ -1,0 +1,12 @@
+<?php
+/**
+ * @file
+ * Does required tasks when module gets installed or uninstalled.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function commerce_extra_address_populate_uninstall() {
+  variable_del('commerce_extra_address_populate_settings');
+}

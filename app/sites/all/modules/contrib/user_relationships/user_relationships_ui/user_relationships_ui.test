@@ -1,0 +1,199 @@
+<?php
+
+/**
+ * @file
+ * User Relationships UI tests
+ */
+
+/**
+ * Tests for user settings.
+ */
+class UserRelationshipUserSettings extends DrupalWebTestCase {
+  /**
+   * Implements getInfo().
+   */
+  function getInfo() {
+    return array(
+      'name' => t('User Relationships User settings'),
+      'description' => t('Check if user settings work as expected.'),
+      'group' => t('User Relationships'),
+    );
+  }
+
+  /**
+   * Set up the test case.
+   */
+  function setUp() {
+    parent::setUp(array('user_relationships', 'user_relationships_ui', 'user_relationship_mailer'));
+
+    // Create relationship types.
+    $rtype = new StdClass;
+    $rtype->name = 'oneway';
+    $rtype->plural_name = 'oneways';
+    $rtype->is_oneway = TRUE;
+    $rtype->requires_approval = FALSE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['oneway'] = $rtype;
+
+    $rtype = new StdClass;
+    $rtype->name = 'twoway';
+    $rtype->plural_name = 'twoways';
+    $rtype->is_oneway = FALSE;
+    $rtype->requires_approval = FALSE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['twoway'] = $rtype;
+
+    unset($rtype);
+    $rtype = new StdClass;
+    $rtype->name = 'approval';
+    $rtype->plural_name = 'approvals';
+    $rtype->is_oneway = FALSE;
+    $rtype->requires_approval = TRUE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['approval'] = $rtype;
+
+    unset($rtype);
+    $rtype = new StdClass;
+    $rtype->name = 'approval-oneway';
+    $rtype->plural_name = 'approvals-oneway';
+    $rtype->is_oneway = TRUE;
+    $rtype->requires_approval = TRUE;
+    $rtype->expires_val = 0;
+    user_relationships_type_save($rtype);
+    $this->rtypes['approval-oneway'] = $rtype;
+
+    user_relationships_types_load(TRUE);
+
+    // Allow users to auto approve relationships.
+    variable_set('user_relationships_allow_auto_approve', TRUE);
+
+    // Allow users to disable e-mail notifications.
+    variable_set('user_relationship_mailer_send_mail', TRUE);
+
+    // Flush permission cache.
+    user_relationships_types_load(TRUE);
+    $this->checkPermissions(array(), TRUE);
+  }
+
+  /**
+   * Test the various user settings.
+   */
+  function testAutoApprovalSettings() {
+     $permissions = array(
+      'can have ' . $this->rtypes['oneway']->name . ' relationships',
+      'can request ' . $this->rtypes['oneway']->name . ' relationships',
+      'can have ' . $this->rtypes['twoway']->name . ' relationships',
+      'can request ' . $this->rtypes['twoway']->name . ' relationships',
+      'view own twoway relationships',
+      'view own oneway relationships',
+    );
+    // User without maintain permission.
+    $u1 = $this->drupalCreateUser($permissions);
+
+    // User without permission for an approval relationship.
+    $permissions[] = 'maintain twoway relationships';
+    $permissions[] = 'maintain oneway relationships';
+    $u2 = $this->drupalCreateUser($permissions);
+
+    // Two users with all required permissions.
+    $permissions[] = 'can have ' . $this->rtypes['approval-oneway']->name . ' relationships';
+    $permissions[] =  'can request ' . $this->rtypes['approval-oneway']->name . ' relationships';
+    $permissions[] =  'can have ' . $this->rtypes['approval']->name . ' relationships';
+    $permissions[] =  'can request ' . $this->rtypes['approval']->name . ' relationships';
+    $permissions[] = 'maintain approval relationships';
+    $permissions[] = 'maintain approval-oneway relationships';
+    $permissions[] = 'view own approval relationships';
+    $permissions[] = 'view own approval-oneway relationships';
+
+    $u3 = $this->drupalCreateUser($permissions);
+    $u4 = $this->drupalCreateUser($permissions);
+
+    // First user does not have maintain permission, should not see any
+    // Relationships options.
+    $this->drupalLogin($u1);
+    $this->drupalGet('user/' . $u1->uid . '/edit');
+    $this->assertNoText(t('Automatically approve relationship requests from other users'));
+    $this->assertNoText(t('Receive e-mail notification of relationship activity'));
+
+    // Make sure that there is no empty relationship fieldset.
+    // Because the relationships tab is always there, use unique text to ensure
+    // that no other text like this is present.
+    // @todo: Find a better way to deal with this.
+    $this->assertUniqueText(T('Relationship'));
+
+    // Second user is not allowed to have relationships of types which require
+    // approval, no options should be displayed. He is however allowed to
+    // disable e-mail notifications.
+    $this->drupalLogin($u2);
+    $this->drupalGet('user/' . $u2->uid . '/edit');
+    $this->assertNoText(t('Automatically approve relationship requests from other users'));
+    $this->assertText(t('Receive e-mail notification of relationship activity'));
+
+    // Disable e-mail notifications of this user.
+    $edit = array(
+     'user_relationship_mailer_send_mail' => FALSE,
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+
+    // The third user is allowed to see the settings, but only for the types
+    // which require approval
+    $this->drupalLogin($u3);
+    $this->drupalGet('user/' . $u3->uid . '/edit');
+    $this->assertText(t('Automatically approve relationship requests from other users'));
+    $this->assertText(t('Receive e-mail notification of relationship activity'));
+    $this->assertFieldByName('user_relationships_ui_auto_approve[' . $this->rtypes['approval']->rtid . ']');
+    $this->assertFieldByName('user_relationships_ui_auto_approve[' . $this->rtypes['approval-oneway']->rtid . ']');
+    $this->assertNoFieldByName('user_relationships_ui_auto_approve[' . $this->rtypes['oneway']->rtid . ']');
+    $this->assertNoFieldByName('user_relationships_ui_auto_approve[' . $this->rtypes['twoway']->rtid . ']');
+
+    // Enable auto approval for the approval-oneway type.
+    $edit = array(
+      'user_relationships_ui_auto_approve[' . $this->rtypes['approval-oneway']->rtid . ']' => TRUE,
+    );
+    $this->drupalPost(NULL, $edit, t('Save'));
+
+    // Verify that the defaults are set correctly.
+    $this->assertFieldChecked('edit-user-relationships-ui-auto-approve-' . $this->rtypes['approval-oneway']->rtid);
+    $this->assertNoFieldChecked('edit-user-relationships-ui-auto-approve-' . $this->rtypes['approval']->rtid);
+
+    // Finally, actually verify that the settings work.
+    $this->drupalLogin($u4);
+
+    // Request approval relationship, should not approve automatically.
+    $this->drupalPost('relationship/' . $u3->uid . '/request/' . $this->rtypes['approval']->rtid, array(), t('Send'));
+    $this->assertText(t('Your approval request has been sent to @user.', array('@user' => $u3->name)));
+
+    // Request approval-oneway relationships, should approve automatically.
+    $this->drupalPost('relationship/' . $u3->uid . '/request/' . $this->rtypes['approval-oneway']->rtid, array(), t('Send'));
+    $this->assertText(t("You are @user's newest approval-oneway.", array('@user' => $u3->name)));
+
+    // Load relationships between these two users.
+    $relationships = user_relationships_load(array('between' => array($u3->uid, $u4->uid)));
+    $this->assertEqual(count($relationships), 2);
+    foreach ($relationships as $relationship) {
+      if ($relationship->rtid == $this->rtypes['approval-oneway']->rtid) {
+        $this->assertTrue((bool)$relationship->approved);
+      }
+      elseif ($relationship->rtid == $this->rtypes['approval']->rtid) {
+        $this->assertFalse((bool)$relationship->approved);
+      }
+      else {
+        $this->fail('Unexpected relationship type @type' , array('@type' => $relationship->rtid));
+      }
+    }
+
+    // Verify that two mails have been sent.
+    $this->assertEqual(count($this->drupalGetMails()), 2);
+
+    // Request a oneway relationship with user 2, this should not generate a
+    // mail notification.
+    $this->drupalPost('relationship/' . $u2->uid . '/request/' . $this->rtypes['oneway']->rtid, array(), t('Send'));
+    $this->assertText(t("You are @user's newest oneway.", array('@user' => $u2->name)));
+
+    // Verify that no additional mails have been sent.
+    $this->assertEqual(count($this->drupalGetMails()), 2);
+  }
+}

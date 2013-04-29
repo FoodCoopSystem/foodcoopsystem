@@ -1,0 +1,12 @@
+name = Webform View
+description = Allow webform submissions to have views embedded
+core = 7.x
+package = "Sparks Interactive"
+
+
+; Information added by drupal.org packaging script on 2012-08-22
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "webform_view"
+datestamp = "1345641454"
+

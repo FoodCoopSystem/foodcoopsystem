@@ -1,0 +1,35 @@
+<?php
+/**
+ * @file
+ * Install time hooks for user_relationship_privatemsg module.
+ */
+
+/***
+ * Implements hook_schema().
+ */
+function user_relationship_privatemsg_schema() {
+  $schema['user_relationship_privatemsg'] = array(
+    'fields' => array(
+      'urpid'   => array(
+        'type'     => 'serial',
+        'not null' => TRUE,
+      ),
+      'rtid'   => array(
+        'type'     => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'author' => array(
+        'type'     => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('urpid'),
+    'unique keys' => array(
+      'rtid_author' => array('rtid', 'author'),
+    ),
+  );
+
+  return $schema;
+}

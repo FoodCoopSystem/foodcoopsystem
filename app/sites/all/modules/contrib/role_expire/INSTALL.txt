@@ -1,0 +1,12 @@
+
+REQUIREMENTS:
+In order to enjoy full potential of role_expire module you need to properly configure Cron job on your server (http://drupal.org/cron) or install poormanscron.module (http://drupal.org/project/poormanscron).
+
+INSTALLATION PROCEDURE:
+1. Extract the module directory (and files) from tarball.
+2. Move role_expire directory to your Drupal's /sites/modules folder (You might need to create modules directory if your installation is fresh).
+3. Login to your Drupal site as superuser.
+4. Go to Administer -> Site building -> Modules.
+5. Enable role_expire module.
+6. Save configuration.
+7. Enjoy! 

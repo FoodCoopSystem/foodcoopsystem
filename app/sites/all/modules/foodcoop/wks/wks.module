@@ -1,0 +1,10 @@
+<?php
+/**
+ * @file
+ * Code for the WKS feature.
+ */
+
+include_once 'wks.features.inc';
+
+db_set_active('crm');
+db_set_active();

@@ -1,0 +1,12 @@
+name = User Relationships
+description = "API for User Relationships. This only provides the programming interface."
+package = "User Relationships"
+core = 7.x
+files[]=user_relationships.test
+
+; Information added by drupal.org packaging script on 2012-03-01
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "user_relationships"
+datestamp = "1330562762"
+

@@ -1,0 +1,102 @@
+<?php
+
+/**
+ * @file
+ * Views integration.
+ */
+
+/**
+ * Test class for Rules link.
+ */
+class RulesLinkTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'Rules link tests',
+      'description' => 'Test basic editing and execution of rules links',
+      'group' => 'Rules',
+    );
+  }
+
+  protected $admin;
+
+  function setUp() {
+    parent::setUp('rules_link', 'rules', 'rules_admin');
+    $this->admin = $this->drupalCreateUser(array('administer rules links', 'administer permissions', 'administer rules'));
+  }
+
+  /**
+   * Create a link with the given name and the type.
+   */
+  function createLink($name, $type) {
+    $this->drupalLogin($this->admin);
+    $this->drupalGet('admin/config/workflow/rules_links/add');
+    $this->assertText('Add rules link');
+    $data = array(
+      'label' => $name,
+      'text' => $name,
+      'name' => $name,
+      'entity_type' => 'node',
+      'bundles[]' => array('article'),
+      'entity_link' => TRUE,
+      'link_type' => $type,
+      'question' => 'foo?',
+      'description' => 'bar!',
+    );
+
+    $this->drupalPost('admin/config/workflow/rules_links/add', $data, t('Save Rules Link'));
+    $this->assertText('Visibility conditions', 'Rules link was added and condition set was created.');
+    $this->assertText('Reactions', 'Rules set was created');
+
+    $this->drupalPost('admin/config/workflow/rules_links/manage/' . $name, $data, t('Save Rules Link'));
+    $this->drupalGet('admin/people/permissions');
+    $this->assertText("$name: Execute rules link", 'Permission was created.');
+    $this->drupalLogout();
+
+    // The Simpletest function checkPermissions() saves all permissions into a
+    // static array, but rules links generates new permissions, when creating
+    // a link. So we have to reset the static cache, so that the
+    // checkPermissions function recognizes the new permissions.
+    drupal_static_reset('checkPermissions');
+  }
+
+  /**
+   * Test creating a new link.
+   */
+  function testTokenLink() {
+    $name = 'token_link';
+
+    $this->createLink($name, 'token');
+    $set = rules_config_load('rules_link_set_' . $name);
+    $set->rule(rule()->action('drupal_message', array('message' => 'Rules link executed.')));
+    $set->save();
+
+    $tokenUser = $this->drupalCreateUser(array("access rules link $name", 'administer rules'));
+    $this->drupalLogin($tokenUser);
+
+    $node = $this->drupalCreateNode(array('title' => 'foo', 'type' => 'article'));
+    $this->drupalGet('node/' . $node->vid);
+    $this->clickLink($name);
+    $this->assertText('Rules link executed');
+  }
+
+  /**
+   * Test creating a new link.
+   */
+  function testConfirmLink() {
+    $name = 'test_rules_link';
+    $this->createLink($name, 'confirm');
+
+    $set = rules_config_load('rules_link_set_' . $name);
+    $set->rule(rule()->action('drupal_message', array('message' => 'Rules link executed.')));
+    $set->save();
+
+    $user2 = $this->drupalCreateUser(array("access rules link $name"));
+    $this->drupalLogin($user2);
+    $node = $this->drupalCreateNode(array('title' => 'foo', 'type' => 'article'));
+    $this->drupalGet('node/' . $node->vid);
+    $this->clickLink($name);
+    $this->drupalPost('test_rules_link/1', array(), t('Confirm'));
+    $this->assertText('Rules link executed.', 'Confirm form was generated and rules link was executed.');
+    $this->drupalLogout();
+  }
+}

@@ -1,0 +1,26 @@
+<?php
+
+/**
+ * Implements hook_user_relationships_save()
+ */
+function user_relationships_rules_user_relationships_save($relationship, $action) {
+  switch ($action) {
+    case 'request':
+    case 'approve':
+      rules_invoke_event('user_relationships_' . $action, user_load($relationship->requester_id), user_load($relationship->requestee_id), $relationship);
+      break;
+  }
+}
+
+/**
+ * Implements hook_user_relationships_delete()
+ */
+function user_relationships_rules_user_relationships_delete($relationship, $action) {
+  switch ($action) {
+    case 'disapprove':
+    case 'cancel':
+    case 'remove':
+      rules_invoke_event('user_relationships_' . $action, user_load($relationship->requester_id), user_load($relationship->requestee_id), $relationship);
+      break;
+  }
+}

@@ -1,0 +1,66 @@
+<?php
+/**
+ * @file
+ * Code for the wks_user feature.
+ */
+
+include_once 'wks_user.features.inc';
+
+/**
+ * Implements hook_block_info().
+ */
+function wks_user_block_info() {
+
+  $blocks['back_to_orders'] = array(
+    'info' => t('[WKS User] Back to orders'),
+  );
+
+  return $blocks;
+}
+
+
+
+/**
+ *  Implements hook_block_view().
+ */
+function wks_user_block_view($delta = '') {
+  // This example is adapted from node.module.
+  $block = array();
+  global $user;
+
+  switch ($delta) {
+
+    case 'back_to_orders':
+      if (user_access('access content')) {
+        $block['subject'] = t('');
+          $block['content'] =  array(
+          '#theme' => 'back_to_orders',
+          '#account' => $user,
+        );
+      }
+      break;
+  }
+  return $block;
+}
+
+/**
+ * Function to add link to orders.
+ */
+function theme_back_to_orders($variables){
+  
+  return l(t('Back to orders'), 'user/' . $variables['account']->uid . '/orders', array('attributes' => array('class' => array('orders-link'))));
+  
+}
+
+/**
+ * Implemenation of hook_theme().
+ *
+ * @ingroup logintoboggan_core
+ */
+function wks_user_theme($existing, $type, $theme, $path) {
+  return array(
+    'back_to_orders' => array(
+      'variables' => array('account' => NULL),
+    ),  
+  );
+}

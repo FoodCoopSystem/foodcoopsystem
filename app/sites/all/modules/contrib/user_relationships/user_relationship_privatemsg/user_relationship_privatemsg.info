@@ -1,0 +1,17 @@
+name = UR-Private message integration
+description = Allows to send message to relationships.
+package = "User Relationships"
+core = 7.x
+dependencies[] = privatemsg
+dependencies[] = user_relationships
+dependencies[] = user_relationships_ui
+files[]=user_relationship_privatemsg.test
+
+
+
+; Information added by drupal.org packaging script on 2012-03-01
+version = "7.x-1.0-alpha4"
+core = "7.x"
+project = "user_relationships"
+datestamp = "1330562762"
+

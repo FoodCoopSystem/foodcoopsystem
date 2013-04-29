@@ -1,0 +1,7 @@
+.comment,
+.node {
+  -khtml-border-radius: 8px;  /* for old Safari, KHTML */
+  -moz-border-radius: 8px;    /* for Firefox */
+  -webkit-border-radius: 8px; /* for old Safari, KHTML */
+  border-radius: 8px;         /* for CSS3 */
+}

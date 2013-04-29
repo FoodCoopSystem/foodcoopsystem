@@ -1,0 +1,15 @@
+name = Pattern mining (experimental)
+description = Provides association rule mining, otherwise called frequent itemset mining, support for your Commerce store.
+package = Commerce (reporting)
+dependencies[] = commerce_order
+core = 7.x
+
+; Tests
+files[] = tests/commerce_reports_patterns.test
+
+; Information added by drupal.org packaging script on 2012-12-02
+version = "7.x-3.0-beta2"
+core = "7.x"
+project = "commerce_reports"
+datestamp = "1354467400"
+

@@ -1,0 +1,105 @@
+<?php
+
+/**
+ * @file
+ * Role expire install.
+ */
+
+
+/**
+ * Implementation of hook_schema().
+ */
+function role_expire_schema() {
+  $schema['role_expire'] = array(
+    'description' => t('Expiration time for the user roles.'),
+    'fields' => array(
+      'uid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => t('User ID connected with expiration time.')
+      ),
+      'rid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'The role ID assigned to the user.',
+      ),
+      'expiry_timestamp' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => t('Role expiration timestamp.'),
+      )
+    ),
+    'primary key' => array('uid', 'rid'),
+  );
+  $schema['role_expire_length'] = array(
+    'description' => t('Length in days to assign each role by default.'),
+    'fields' => array(
+      'rid' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => t('The role_id.')
+      ),
+      'duration' => array(
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'description' => t('The default duration for the role.')
+      ),
+    ),
+    'primary key' => array('rid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function role_expire_install() {
+
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function role_expire_uninstall() {
+
+}
+
+/**
+ * Update schema for default role_expire_length table. Convert integer days to text "# days".
+ */
+function role_expire_update_7101() {
+
+  // Fetch out all the current durations.
+  $result = db_query('SELECT rid,duration FROM {role_expire_length}');
+  $durations = array();
+  while($row = $result->fetchObject()) {
+    $durations[$row->rid] = $row->duration;
+  }
+
+  // Convert the original duration column from type int to type text
+  db_change_field(
+          'role_expire_length',
+          'duration',
+          'duration',
+          array(
+              'type' => 'text',
+              'size' => 'small',
+              'description' => t('A strtotime-compatible duration string'),
+          )
+  );
+
+  // Append "days" since that's all it could've been before this revision.
+  foreach ($durations as $rid => $duration) {
+    db_update('role_expire_length')
+      ->fields(array('duration' => "$duration days"))
+      ->condition('rid',$rid)
+      ->execute();
+  }
+}

@@ -1,0 +1,73 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the commerce_reports_tax module.
+ */
+ 
+/**
+ * Implementation of hook_schema().
+ */
+function commerce_reports_tax_schema() {
+  $schema = array();
+
+  $schema['commerce_reports_tax'] = array(
+    'description' => 'Information about the tax rates applied to individual orders.',
+    'fields' => array(
+      'tax_rate' => array(
+        'description' => 'The machine-name of the applied rate.',
+        'type' => 'varchar',
+        'length' => 64,
+        'not null' => TRUE,
+      ),
+      'order_id' => array(
+        'description' => 'Order ID.',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
+      'currency_code' => array(
+         'description' => 'The currency of the taxes collected, as per the currency of the total order amount.',
+         'type' => 'varchar',
+         'length' => 32,
+         'not null' => TRUE,
+      ),
+      'taxable' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL,
+        'description' => 'The applied amount of tax.',
+      ),
+      'taxed' => array(
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL,
+        'description' => 'The applied amount of tax.',
+      ),
+    ),
+    'primary key' => array('tax_rate', 'order_id', 'currency_code'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Changes to the database structure.
+ */
+function commerce_reports_tax_update_7300(&$sandbox) {
+	// Delete all tables that existed in the alpha4 release.
+  $previous_tables = array(
+  	'commerce_reports_tax',
+  	'commerce_reports_tax_rate_orders',
+  	'commerce_reports_tax_rate_aggregate',
+  	'commerce_reports_tax_rate',
+  );
+  
+  foreach ($previous_tables as $table) {
+  	if (db_table_exists($table)) {
+  		db_drop_table($table);
+  	}
+  }
+  
+  // Install the new database schema.
+  drupal_install_schema('commerce_reports_tax');
+}

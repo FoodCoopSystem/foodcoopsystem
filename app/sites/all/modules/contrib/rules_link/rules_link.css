@@ -1,0 +1,21 @@
+.rules-link-wrapper {
+  position: relative;
+}
+
+a.rules-link {
+  position: relative;
+}
+
+.rules-link-waiting {
+  background: url(rules-link-throbber.gif) no-repeat right center;
+  padding-right: 16px;
+}
+
+.rules-link-waiting a {
+  opacity: 0.5;
+  filter: alpha(opacity=50); /* IE */
+}
+
+.rules-link-rules-margin {
+  margin-bottom: 3em;
+}

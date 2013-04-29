@@ -1,0 +1,29 @@
+diff --git a/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module b/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
+index 4e2a776..0c8c051 100755
+--- a/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
++++ b/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
+@@ -68,11 +68,16 @@
+   // As we don't have 'default_product' in form_state what we need to get
+   // commerce_decimal_quantities setting is to load product by id,
+   // get its type and then get setting.
++  //If we don't have order_number, we haven't any line_items.
++  if (!$form['#entity']->order_number) {
++    return;
++  }
+ 
+   // Get the order object.
+   $order = entity_load_single('commerce_order', $form['#entity']->order_number);
+   // Get the line items.
+   // We need these foreach cycles to avoid langcode hardcode.
++  if(is_object($order)) {
+   foreach ($order->commerce_line_items as $line_items) {
+     foreach ($line_items as $line_item_array) {
+       // Get the line item object.
+@@ -96,6 +101,7 @@
+       }
+     }
+   }
++  }
+ }
+ 
+ /**

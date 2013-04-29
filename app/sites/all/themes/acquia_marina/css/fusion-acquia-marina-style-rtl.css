@@ -1,0 +1,363 @@
+/* Header site info */
+
+.ie6 #header-site-info.block {
+  float: right;
+  position: static;
+}
+
+.ie7 #header-site-info.block {
+  position: static;
+  width: 100%;
+}
+
+.ie6 #header-site-info.block .inner {
+  position: static;
+}
+
+.ie7 #header-site-info.block .inner {
+  padding-top: 10px;
+  position: static;
+}
+
+.ie6 #site-name-wrapper,
+.ie7 #site-name-wrapper {
+  float: right;
+}
+
+/* Logo
+/-------------------------------------------------------------- */
+
+#logo {
+  float: right;
+  margin: 0 0 0 15px;
+}
+
+/* Primary Menu
+/-------------------------------------------------------------- */
+
+.main-menu ul.menu li {
+  float: right;
+}
+
+.ie6 .main-menu ul.menu li,
+.ie7 .main-menu ul.menu li {
+  float: left;
+}
+
+.ie6 .main-menu ul.menu li a:link,
+.ie6.main-menu ul.menu li a:visited,
+.ie7 .main-menu ul.menu li a:link,
+.ie7.main-menu ul.menu li a:visited {
+  display: block;
+  float: left;
+}
+
+/* Second level */
+
+.main-menu ul.menu li:hover ul.menu,
+.main-menu ul.menu li.hover ul.menu,
+.main-menu ul.menu li.sfHover ul.menu {
+  text-align: right;
+}
+
+.ie6 .main-menu ul.menu li:hover ul.menu,
+.ie6 .main-menu ul.menu li.hover ul.menu,
+.ie6 .main-menu ul.menu li.sfHover ul.menu,
+.ie7 .main-menu ul.menu li:hover ul.menu,
+.ie7 .main-menu ul.menu li.hover ul.menu,
+.ie7 .main-menu ul.menu li.sfHover ul.menu {
+  margin-top: -3px;
+}
+
+.main-menu ul.menu li ul.menu li {
+  float: left;
+}
+
+.ie6 .main-menu ul.menu li ul.menu li,
+.ie7 .main-menu ul.menu li ul.menu li {
+  margin-right: -10px;
+}
+
+.ie6 .main-menu ul.menu li ul.menu li a:link,
+.ie6 .main-menu ul.menu li ul.menu li a:visited,
+.ie7 .main-menu ul.menu li ul.menu li a:link,
+.ie7 .main-menu ul.menu li ul.menu li a:visited {
+  display: static;
+  float: none;
+}
+
+/* Third level */
+
+.main-menu ul.menu li:hover ul.menu li ul.menu,
+.main-menu ul.menu li.hover ul.menu li ul.menu {
+  margin-right: 34px;
+}
+
+/* Secondary Menu
+/-------------------------------------------------------------- */
+
+.fusion-inline-menu ul.links li {
+  float: right;
+}
+
+.ie6 .fusion-inline-menu-inner ul.links li,
+.ie7 .fusion-inline-menu-inner ul.links li {
+  border-right: 1px solid #ccc;
+  float: left;
+}
+
+.ie6 .fusion-inline-menu-inner ul.links li.last,
+.ie7 .fusion-inline-menu-inner ul.links li.last {
+  border-right: none;
+}
+
+.fusion-inline-menu ul.links li a:link,
+.fusion-inline-menu ul.links li a:visited {
+  border-left: none;
+  border-right: 1px solid #ccc;
+}
+
+.fusion-inline-menu ul.links li.first a:link,
+.fusion-inline-menu ul.links li.first a:visited {
+  border-left: none;
+  border-right: none;
+  padding-left: 10px;
+}
+
+.fusion-inline-menu ul.links li.last a:link,
+.fusion-inline-menu ul.links li.last a:visited {
+  padding-right: 10px;
+}
+
+.ie6 .fusion-inline-menu-inner ul.links li a:link,
+.ie6 .fusion-inline-menu-inner ul.links li a:visited,
+.ie7 .fusion-inline-menu-inner ul.links li a:link,
+.ie7 .fusion-inline-menu-inner ul.links li a:visited {
+  border: none;
+}
+
+/* Main content
+/-------------------------------------------------------------- */
+
+.ie6 .main-content,
+.ie7 .main-content {
+  position: relative;
+}
+
+.ie6 #content-group .block .inner,
+.ie7 #content-group .block .inner {
+  position: static;
+}
+
+/* Default node styles
+/-------------------------------------------------------------- */
+
+.node ul.links li,
+.node ul.inline li,
+.node .links a:link,
+.node .links a:visited {
+  padding: 0 0 0 14px;
+}
+
+/* Links for nodes (taxonomy, commenting, read more, etc) */
+
+.ie6 ul.terms,
+.ie6 ul.links,
+.ie7 ul.terms,
+.ie7 ul.links {
+  margin: 0 0 0 -15px;
+}
+
+.ie6 .node ul.links li,
+.ie6 .node ul.inline li,
+.ie6 .node .links a,
+.ie7 .node ul.links li,
+.ie7 .node ul.inline li,
+.ie7 .node .links a {
+  margin: 0;
+  padding: 0 14px 0 0;
+}
+
+#content-content .node ul.links li.comment_forbidden a {
+  padding-left: 4px;
+  padding-right: 0;
+}
+
+.picture {
+  float: left;
+  margin: 0 4px 2px 0;
+}
+
+blockquote {
+  background: url(../images/rtl/close-quote.png) no-repeat 0 100%;
+  padding-left: 10px;
+}
+
+blockquote p:first-child {
+  background: url(../images/rtl/open-quote.png) no-repeat 100% 0;
+  padding: 0 20px 0 0;
+}
+
+/* Lists */
+
+ul,
+ol {
+  margin: 0 40px 10px 0;
+}
+
+ul ul,
+ol ol {
+  margin: 0 20px 10px 0;
+}
+
+ul li {
+  background: url(../images/rtl/green-bullet.png) no-repeat 100% 3px;
+  list-style: none;
+  list-style-image: none;
+  padding-right: 20px;
+}
+
+/* Pagers */
+
+ul.pager li {
+  background: none;
+  padding-right: 0;
+}
+
+ul.pager li.pager-current {
+  padding-right: 5px;
+}
+
+/* Comments
+/-------------------------------------------------------------- */
+
+.ie6 #comments {
+  position: relative;
+}
+
+.ie6 #comments .inner {
+  background-color: transparent;
+}
+
+#comments h2.comments-header {
+  padding: 6px 50px 6px 14px;
+}
+
+.ie6 #comments .marina-rounded-corners .inner-wrapper .inner-inner {
+  padding-left: 8px;
+  padding-top: 2px;
+}
+
+.ie6 #comments .marina-rounded-corners .inner-wrapper {
+  margin-left: 20px;
+}
+
+.ie6 #comments .even {
+  background: none;
+}
+
+.comment .links a {
+  text-align: left;
+}
+
+.comment ul.links {
+  text-align: left;
+}
+
+#content-content .comment ul.links li {
+  margin: 0 0 0 10px;
+}
+
+/* Skin overrides
+/-------------------------------------------------------------- */
+
+/*block title skins*/
+
+.marina-title-rounded-blue h2.block-title,
+.marina-title-rounded-green h2.block-title {
+  padding: 8px 8px 6px 8px;
+  text-align: left;
+}
+
+.ie6 .marina-title-rounded-blue h2.block-title,
+.ie6 .marina-title-rounded-green h2.block-title {
+  margin: 0 -8px 8px 0;
+}
+
+.title-icon h2.block-title {
+  padding-right: 50px;
+  text-align: left;
+}
+
+/* Marina - List - Green arrow */
+
+.marina-list-arrow-green ul li {
+  background: url(../images/rtl/green-checkmark.png) no-repeat 100% 5px;
+  padding: 10px 40px 15px 0;
+}
+
+.ie6 .marina-list-arrow-green ul li {
+  position: relative;
+}
+
+/* Marina - List - Raquo */
+
+.marina-list-raquo ul {
+  margin-right: 0;
+}
+
+.marina-list-raquo ul li {
+  background: url(../images/rtl/raquo.png) no-repeat 100% 8px;
+  padding-left: 0;
+  padding-right: 15px;
+}
+
+.ie6 .marina-list-raquo ul li {
+  position: relative;
+}
+
+/*rounded corners */
+
+.ie6 .marina-rounded-corners .inner-wrapper .inner-inner {
+  padding-left: 0;
+  padding-top: 0;
+}
+
+/* Icons
+/-------------------------------------------------------------- */
+
+.title-icon .block-icon,
+#comments .block-icon {
+  right: 0;
+}
+
+.icon-bubble .block-icon,
+.icon-calendar .block-icon,
+.icon-chalkboard .block-icon,
+.icon-chatbubbles .block-icon,
+.comment-icon-chatbubbles,
+.icon-colorchart .block-icon,
+.icon-flag .block-icon,
+.icon-gears .block-icon,
+.icon-home .block-icon,
+.icon-keys .block-icon,
+.icon-newspaper .block-icon,
+.icon-notepad .block-icon,
+.icon-photo .block-icon,
+.icon-rss .block-icon,
+.icon-search .block-icon,
+.icon-star .block-icon {
+  background-position: 100% 50%;
+}
+
+.icon-search .block-icon {
+  background: url(../images/rtl/icons/icon-search.png) no-repeat 0 50%;
+}
+
+/* Clearfixes
+/-------------------------------------------------------------- */
+
+.ie6 .block .inner {
+  display: block;
+  height: 1%;
+}

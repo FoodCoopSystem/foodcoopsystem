@@ -1,0 +1,42 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the commerce_reports_patterns module.
+ */
+ 
+/**
+ * Implementation of hook_schema().
+ */
+function commerce_reports_patterns_schema() {
+  $schema = array();
+  
+  $schema['commerce_reports_patterns'] = array(
+    'description' => 'Commerce tax patterns.',
+    'fields' => array(
+      'size' => array(
+        'description' => 'The size of the frequent item set the association rule was derived from.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+      'if_clause' => array(
+        'description' => 'The items that need to be in a transaction for the rule to apply.',
+        'type' => 'blob',
+        'serialize' => TRUE,
+        'not null' => TRUE,
+      ),
+      'then_clause' => array(
+        'description' => 'The resulting items that could possibly be in that transaction by this rule;',
+        'type' => 'blob',
+        'serialize' => TRUE,
+        'not null' => TRUE,
+      ),
+      'confidence' => array(
+        'description' => 'The confidence of the rule.',
+        'type' => 'float',
+        'not null' => TRUE,
+      ),
+    ),
+  );
+  
+  return $schema;
+}

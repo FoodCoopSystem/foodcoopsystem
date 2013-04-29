@@ -1,0 +1,11 @@
+/**
+ * @file
+ * Invite module styles.
+ */
+#invite-reg-link-container {
+  display: none;
+}
+
+#invite-reg-link-close {
+  float: right;
+}

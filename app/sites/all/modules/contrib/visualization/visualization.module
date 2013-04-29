@@ -1,0 +1,106 @@
+<?php
+/**
+ * @file
+ * The helper functions for the visualization part of the module.
+ */
+ 
+/**
+ * Implements hook_menu().
+ */
+function visualization_menu() {
+  $items = array();
+
+  $items['admin/config/system/visualization'] = array(
+    'title' => 'Visualization',
+    'description' => 'Configure visualization settings.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('visualization_settings_form'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'visualization.admin.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function visualization_theme() {
+  return array(
+    'visualization' => array(
+      'variables' => array(
+        'options' => array(
+          'title' => NULL,
+          'xAxis' => array(),
+          'fields' => array(),
+          'type' => 'line',
+          'data' => array(),
+        ),
+      ),
+      'template' => 'visualization',
+      'path' => drupal_get_path('module', 'visualization') . '/theme',
+    ),
+  );
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function visualization_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'visualization') . '/includes/views',
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_type().
+ */
+function visualization_ctools_plugin_type() {
+  return array(
+    'library' => array(
+      'use hooks' => FALSE,
+    ),
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function visualization_ctools_plugin_directory($module, $plugin) {
+  if (($module == 'visualization') && ($plugin == 'library')) {
+    return 'includes/plugins';
+  }
+}
+
+/**
+ * Implements hook_registry_files_alter().
+ */
+function visualization_registry_files_alter(&$files, $modules) {
+  $files[drupal_get_path('module', 'visualization') . '/includes/interfaces.inc'] = array(
+    'module' => 'visualization',
+    'weight' => 0,
+  );
+}
+
+/**
+ * Returns the name of the library that should be used to render a chart.
+ *
+ * Optionally one can pass a chart type to get the best library available
+ * for that type.
+ */
+function visualization_plugin($type = FALSE) {
+  ctools_include('plugins');
+
+  $plugins = ctools_get_plugins('visualization', 'library');
+  $preferred_plugin = variable_get('visualization', 'gva');
+
+  if (!empty($plugins[$preferred_plugin]) && $plugins[$preferred_plugin]['handler']->available() &&
+    (!empty($type) && in_array($type, $plugins[$preferred_plugin]['handler']->supportedTypes()))) {
+    return $plugins[$preferred_plugin];
+  }
+  else {
+    return reset($plugins);
+  }
+}

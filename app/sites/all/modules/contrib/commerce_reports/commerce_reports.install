@@ -1,0 +1,20 @@
+<?php
+/**
+ * @file
+ * Install, update, and uninstall functions for the commerce_reports module.
+ */
+ 
+/**
+ * Implements hook_reports_install().
+ */
+function commerce_reports_install() {
+  // Set default for date format.
+  variable_set('date_format_commerce_reports', 'l j F o');
+}
+
+/**
+ * Changes the default date format used by Commerce Reporting.
+ */
+function commerce_reports_update_7300(&$sandbox) {
+  variable_set('date_format_commerce_reports', 'l j F o');
+}

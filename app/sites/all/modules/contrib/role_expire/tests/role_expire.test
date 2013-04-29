@@ -1,0 +1,201 @@
+<?php
+
+///**
+// * @package RoleExpireUnitTestCase
+// */
+//class RoleExpireUnitTestCase extends DrupalUnitTestCase {
+//
+//public static function getInfo() {
+//
+//  return array(
+//    'name' => 'Role Expire unit tests',
+//    'description' => 'Unit tests for the Role Expire module.',
+//    'group' => 'Role Expire',
+//  );
+//
+//}
+//
+//
+//} // class RoleExpireUnitTestCase
+
+
+/**
+ * @package RoleExpireWebTestCase
+ */
+class RoleExpireWebTestCase extends DrupalWebTestCase {
+
+protected $privileged_user;
+
+public static function getInfo() {
+
+  return array(
+    'name' => 'Role Expire web tests',
+    'description' => 'Web tests for the Role Expire module.',
+    'group' => 'Role Expire',
+  );
+
+}
+
+public function setUp() {
+  parent::setUp('role_expire');  // Enable any modules required for the test
+
+  // Create and log in our privileged user. Note that drupalCreateUser also
+  // calls drupalCreateRole to create a new role and to assign it to the new
+  // user. The name of the new role is the same as its rid.
+  $this->privileged_user = $this->drupalCreateUser(array(
+    'administer permissions',
+    'administer role expire',
+    ));
+  $this->drupalLogin($this->privileged_user);
+}
+
+public function testRoleExpire_tests() {
+
+  // Verify that the user/edit page has the role_expire extensions on it.
+  $this->drupalGet('user/'.$this->privileged_user->uid.'/edit');
+
+  // Evaluate: does the user/edit page have role-expire stuff on it?
+  $str = 'role expiration time';
+  if (!$this->assertText(t($str),t('Testing for "%str" on page.',array('%str'=>$str)))) {
+    // This is a critical failure. Time to abort.
+    $this->error(t('Testing aborted: %str missing',array('%str'=>$str)));
+    return FALSE;
+  }
+
+  // NOTE: No need to test in the creation/deletion of users and roles. Let
+  // the *user* simpletests do that. NOTE: user.test takes a long time.
+  
+  // Create a role *without* a default expiration date.
+  // ***covered by user.test***
+
+  // Edit role: add and remove default expiration date to role
+  // (but not to 'authenticated user').
+  $roles = user_roles(TRUE);
+  $rid = max(array_keys($roles));
+  $rname = $roles[$rid];
+  if ($rname == t('authenticated user')) {
+    // Exception!
+    $this->error(t('Testing aborted before completion: no roles to test on.'));
+    return FALSE;
+  }
+
+  // Here's where we actually set and unset the default expiration for the role.
+  $field = 'role_expire';
+  foreach (array('12321','') as $str) {
+    $edit = array(
+        $field => $str,
+    );
+    $this->drupalPost('admin/people/permissions/roles/edit/'.$rid,$edit,t('Save role'));
+    $result = $this->drupalGet('admin/people/permissions/roles/edit/'.$rid);
+    $this->assertFieldByName($field,$str,
+            t('Looking for value "%str" in %field field',
+                    array('%str' => $str,
+                          '%field' => $field,
+                         )
+             )
+            );
+    
+  } // foreach field value
+
+  $field = 'role_expire_'.$rid;
+  $user_edit_path = 'user/'.$this->privileged_user->uid.'/edit';
+
+  // Edit user: add a date that's in the past.
+  $yesterday = date('Y-m-d H:i:s',strtotime('-1 day'));
+  $edit = array($field => $yesterday);
+  $result = $this->drupalPost($user_edit_path,$edit,t('Save'));
+  $this->assertText(t('Role expiry must be in the future.'),t('Yesterday should be invalid'));
+  
+  // Edit user: add completely invalid expiration date.
+  $invalid_date = 'completely invalid date';
+  $edit = array($field => $invalid_date);
+  $this->drupalPost($user_edit_path,$edit,t('Save'));
+  $this->assertText(t('Role expiry is not in correct format.'),t('Date must be a date'));
+
+  // Edit user: remove expiration date from a role.
+  $blank = '';
+  $edit = array($field => $blank);
+  $this->drupalPost($user_edit_path,$edit,t('Save'));
+  $this->assertNoRaw(t('error'),t('Blank date should be valid.'));
+
+  // Edit user: add valid (future) expiration date to a role.
+  $tomorrow = date('Y-m-d H:i:s',strtotime('+1 day'));
+  $edit = array($field => $tomorrow);
+  $this->drupalPost($user_edit_path,$edit,t('Save'));
+  $this->assertFieldByName($field,$tomorrow,
+          t('Tomorrow (%t) should be valid',array('%t' => $tomorrow))
+          );
+
+  // Edit user: Unassign a role that does not have an expiration date.
+  // *** Should be covered by user.test ***
+
+  // Edit user: Unassign a role from user that does have an expiration date.
+  // TODO: Why does the SimpleTest RoleExpireWebTestCase not show *any* of the roles
+  // after this test?
+  $checkbox = "roles[$rid]";
+  $edit = array($checkbox => FALSE);
+  $this->drupalPost($user_edit_path,$edit,t('Save'));
+  if (!$this->assertRaw($checkbox,t('Making sure role checkbox is still on page.'))) {
+    // This is a critical error!  Exception!!
+    $this->error(t('Testing aborted before completion: checkbox missing.'));
+    return FALSE;
+  }
+  $this->assertNoRaw(t('error'),t('Unassigning role with expiration should be OK.'));
+
+  // Delete a user with a role that does not have an expiration date.
+  // *** Should be covered by user.test ***
+
+  // Delete a user with a role that does have an expiration date.
+  $edit = array(
+            $checkbox => TRUE,
+            $field => $tomorrow,
+          );
+  $this->drupalPost($user_edit_path,$edit,t('Save'));
+  $this->assertText($rname,t('Looking for role name "%r" on page.',array('%r'=>$name)));
+  $this->assertNoRaw(t('error'),t('Re-adding role with expiration date.'));
+
+  // [The following adapted from user.test/testUserCancelByAdmin()]
+
+  // Create administrative user.
+  $admin_user = $this->drupalCreateUser(array('administer users'));
+  $this->drupalLogin($admin_user);
+
+  $this->drupalGet($user_edit_path);
+  $this->drupalPost(NULL, NULL, t('Cancel account'));
+
+  // Confirm deletion.
+  $this->drupalPost(NULL, NULL, t('Cancel account'));
+  $this->assertRaw(t('%name has been deleted.', array('%name' => $account->name)), t('User deleted.'));
+  $this->assertNoRaw(t('error'),t('Deleting user with a role that has an expiration date.'));
+
+  // Done!
+  return TRUE;
+}
+
+public function testAssignAndRemoveRole()  {
+
+  // Create and log in the operating user.
+  $admin_user = $this->drupalCreateUser(array('administer users','administer role expire'));
+  $this->drupalLogin($admin_user);
+
+  // Create the victim (with a randomly assigned role).
+  $victim_user = $this->drupalCreateUser();
+
+  // Get the victim's highest rid.
+  $all_rids = array_keys($victim_user->roles);
+  sort($all_rids);
+  $rid = array_pop($all_rids);
+
+  // Assign the role to the user.
+  $this->drupalPost('user/' . $victim_user->uid . '/edit', array("roles[$rid]" => $rid), t('Save'));
+  $this->assertText(t('The changes have been saved.'));
+  $this->assertFieldChecked('edit-roles-' . $rid, t('Role is assigned.'));
+
+  // Remove the role from the user.
+  $this->drupalPost('user/' . $victim_user->uid . '/edit', array("roles[$rid]" => FALSE), t('Save'));
+  $this->assertText(t('The changes have been saved.'));
+  $this->assertNoFieldChecked('edit-roles-' . $rid, t('Role is removed from user.'));
+}
+
+
+}

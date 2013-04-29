@@ -1,0 +1,243 @@
+<?php
+
+/**
+ * @file
+ * Displays some statistics about sent invitations.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function invite_stats_theme() {
+  return array(
+    'invite_stats_ranking' => array(
+      'variables' => array('inviters' => NULL, 'rank' => 1),
+    ),
+    'invite_stats_count' => array(
+      'variables' => array('count' => NULL),
+    ),
+  );
+}
+
+/**
+ * Implements hook_permission().
+ */
+function invite_stats_permission() {
+  return array(
+    'view invite statistics' => array(
+      'title' => 'View invite statistics',
+      'description' => t('View invite statistics'),
+    ),
+    'view own invite statistics' => array(
+      'title' => 'View own invite statistics',
+      'description' => t('View own invite statistics'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function invite_stats_user_view($account, $view_mode, $langcode) {
+  global $user;
+
+  $view_access = user_access('view invite statistics');
+  $view_own_access = user_access('view own invite statistics') && $account->uid == $user->uid;
+  if ($view_access || $view_own_access) {
+    $account->content['invite_stats'] = array(
+      '#type' => 'user_profile_category',
+      '#title' => t('Invite statistics'),
+      '#markup' => '',
+    );
+
+    $account->content['invite_stats']['accepted'] = array(
+      '#type' => 'user_profile_item',
+      '#title' => t('Successful'),
+      '#markup' => invite_count($account->uid, 'accepted'),
+    );
+    $account->content['invite_stats']['pending'] = array(
+      '#type' => 'user_profile_item',
+      '#title' => t('Pending'),
+      '#markup' => invite_count($account->uid, 'pending'),
+    );
+    $account->content['invite_stats']['expired'] = array(
+      '#type' => 'user_profile_item',
+      '#title' => t('Unsuccessful'),
+      '#markup' => invite_count($account->uid, 'expired'),
+    );
+  }
+}
+
+/**
+ * Implements hook_block_info().
+ */
+function invite_stats_block_info() {
+  $blocks['top_inviters'] = array(
+    'info' => t('Top inviters/User rank'),
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function invite_stats_block_view($delta = '') {
+  $block = array();
+
+  switch ($delta) {
+    case 'top_inviters':
+      if (user_access('view invite statistics')) {
+        if (arg(0) == 'user' && is_numeric(arg(1)) && $account = user_load(arg(1))) {
+          $block = array(
+            'subject' => t("@user's invite rank", array('@user' => $account->name)),
+            'content' => invite_stats_display_user_rank($account->uid),
+          );
+        }
+        else {
+          $block = array(
+            'subject' => t('Top inviters'),
+            'content' => invite_stats_display_top_inviters(),
+          );
+        }
+      }
+      break;
+  }
+  return $block;
+}
+
+/**
+ * Implements hook_block_configure().
+ */
+function invite_stats_block_configure($delta = '') {
+  $form = array();
+  if ($delta == 'top_inviters') {
+    $form['invite_num_ranks'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Number of inviters'),
+      '#default_value' => variable_get('invite_num_ranks', 5),
+      '#size' => 3,
+      '#maxlength' => 3,
+      '#description' => t('Show this number of inviters in the Top inviters and User rank blocks.'),
+      '#required' => TRUE,
+    );
+  }
+  return $form;
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function invite_stats_block_save($delta = '', $edit = array()) {
+  if ($delta == 'top_inviters') {
+    variable_set('invite_num_ranks', (int) $edit['invite_num_ranks']);
+  }
+}
+
+/**
+ * Render the "Top inviters" block.
+ */
+function invite_stats_display_top_inviters() {
+  $inviters = array();
+  $result = db_query_range("SELECT uid, COUNT(uid) AS count FROM {invite} WHERE joined <> 0 GROUP BY uid ORDER BY count DESC", 0, variable_get('invite_num_ranks', 5));
+  foreach ($result as $row) {
+    $inviters[] = $row;
+  }
+  return theme('invite_stats_ranking', array('inviters' => $inviters));
+}
+
+/**
+ * Render the displayed user's rank block.
+ */
+function invite_stats_display_user_rank($uid) {
+  $inviters = array();
+  $max = variable_get('invite_num_ranks', 5);
+
+  // Get user's invite count.
+  $user_invite_stats_count = db_query("SELECT COUNT(*) FROM {invite} WHERE uid = :uid AND joined <> 0", array(':uid' => $uid))->fetchField();
+
+  // Calculate user's rank.
+  $result = db_query("SELECT DISTINCT COUNT(uid) FROM {invite} WHERE joined <> 0 GROUP BY uid HAVING COUNT(uid) > :count", array(':count' => $user_invite_stats_count))->fetchAll();
+  $rank = 1 + count($result);
+
+  // Fetch users with more invites.
+  $i = 0;
+  $prev_count = 0;
+  $result = db_query_range("SELECT uid, COUNT(uid) AS count FROM {invite} WHERE joined <> 0 GROUP BY uid HAVING COUNT(uid) > :count ORDER BY count ASC", 0, $max - 1, array(':count' => $user_invite_stats_count))->fetchAll();
+  foreach ($result as $row) {
+    if ($row->count != $prev_count) {
+      $prev_count = $row->count;
+      $rank--; // Decrement initial rank
+    }
+    array_unshift($inviters, $row);
+  }
+
+  // Add current user, now we have invite_num_ranks users at max.
+  $inviters[] = (object) array('uid' => $uid, 'count' => $user_invite_stats_count);
+  $user_idx = count($inviters);
+
+  // Add users with equal or less invites.
+  $i = 0;
+  $prev_count = $user_invite_stats_count;
+  $result = db_query_range("SELECT uid, COUNT(uid) AS count FROM {invite} WHERE joined <> 0 GROUP BY uid HAVING COUNT(uid) <= :count AND uid <> :uid ORDER BY count DESC", 0, $max - 1, array(':count' => $user_invite_stats_count, ':uid' => $uid));
+  $inviters = $result->fetchAll();
+
+  // Slice result.
+  $start = max($user_idx - 1 - floor($max / 2), 0);
+  if (count($inviters) - $user_idx < floor($max / 2)) {
+    $start -= max(count($inviters) - $user_idx, floor($max / 2));
+    $start = max($start, 0);
+  }
+  $inviters = array_slice($inviters, $start, $max);
+
+  return theme('invite_stats_ranking', array('inviters' => $inviters, 'rank' => $rank));
+}
+
+/**
+ * Theme the Top inviters/user rank block.
+ *
+ * @param $inviters
+ *   An array of arrays consisting of the user id and invite count.
+ * @param $rank
+ *   The rank of the first inviter in the list.
+ *
+ * @ingroup themeable
+ */
+function theme_invite_stats_ranking($vars) {
+  if ($vars['inviters']) {
+    global $user;
+
+    $header = array();
+    $rows = array();
+    $prev_count = -1;
+    foreach ($vars['inviters'] as $inviter) {
+      $row = array();
+
+      if ($inviter->count != $prev_count) {
+        $row[] = array('data' => $vars['rank'] . '.', 'style' => 'width: 5%');
+        $prev_count = $inviter->count;
+        $vars['rank']++;
+      }
+      else {
+        $row[] = '';
+      }
+      $row[] = theme('username', array('account' => user_load($inviter->uid)));
+      $row[] = array('data' => theme('invite_stats_count', array('count' => $inviter->count)), 'align' => 'right');
+      $rows[] = array('data' => $row, 'class' => array($inviter->uid == $user->uid ? 'current-user' : ''));
+    }
+
+    return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('id' => 'invite-ranks')));
+  }
+}
+
+/**
+ * Theme an invite count.
+ *
+ * @param $count
+ *   A number.
+ *
+ * @ingroup themeable
+ */
+function theme_invite_stats_count($vars) {
+  $title = format_plural($vars['count'], '1 invite', '@count invites', array('@count' => $vars['count']));
+  return '<span class="count" title="' . $title . '">' . $vars['count'] . '</span>';
+}

@@ -1,0 +1,14 @@
+name        = Commerce Extra Quantity
+description	= Wraps quantity fields with - and + links to decrease or increase quantity.
+package			= Commerce Extra
+core        = 7.x
+
+dependencies[] = commerce_extra
+dependencies[] = commerce_cart
+
+; Information added by drupal.org packaging script on 2012-01-18
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "commerce_extra"
+datestamp = "1326873349"
+

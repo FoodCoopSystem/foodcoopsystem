@@ -1,0 +1,53 @@
+<?php
+
+/**
+ * Implements hook_help().
+ */
+function commerce_reports_patterns_help($path, $arg) {
+  switch ($path) {
+    case 'admin/commerce/reports/patterns':
+      return '<p>' . t('Association rules are if/then statements that help uncover relationships between seemingly unrelated data in a relational database or other information repository. An example of an association rule would be "If a customer buys a dozen eggs, he is 80% likely to also purchase milk."') . '</p><p>' . t("This module is experimental and should be used a such, it is merely a proof of concept showing the interestingness of association rule mining and their potential future use. The algorithm used by this module requires that the transaction database fits in memory; this means that it is not unlikely for the process to abort when it runs out of memory. If that's the case, try setting your parameters to a higher value.") . '</p>';
+      
+    case 'admin/commerce/reports/patterns/view':
+      return '<p>' . t("Here you see the rules generated during the previous batch process. Shown below are the top ten rules for every size of frequent itemset. You should interpret these rules as follows: if a customer buys the items in the antecedent, there's a certain chance that they will also buy the items in the consequent.") . '</p>';
+  }
+}
+
+/**
+ * Implements hook_menu().
+ */
+function commerce_reports_patterns_menu() {
+  $items = array();
+  
+  $items['admin/commerce/reports/patterns'] = array(
+    'title' => 'Patterns',
+    'description' => 'Discover frequent patterns for your store.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('commerce_reports_patterns_form'),
+    'access arguments' => array('access commerce reports patterns'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'commerce_reports_patterns.admin.inc',
+    'weight' => 100,
+  );
+  $items['admin/commerce/reports/patterns/view'] = array(
+    'title' => 'Report',
+    //'description' => '',
+    'page callback' => 'commerce_reports_patterns_view',
+    'access arguments' => array('access commerce reports patterns'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'commerce_reports_patterns.admin.inc',
+  );
+  
+  return $items;
+}
+
+/**
+ * Implementation of hook_permission().
+ */
+function commerce_reports_patterns_permission() {
+  return array(
+    'access commerce reports patterns' => array(
+      'title' => t('Access commerce reports patterns'),
+    ),
+  );
+}

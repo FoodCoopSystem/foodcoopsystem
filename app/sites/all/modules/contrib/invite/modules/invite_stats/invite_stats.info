@@ -1,0 +1,12 @@
+name = Invite Statistics
+description = "Displays some statistics about sent invitations."
+core = 7.x
+package = Invite
+dependencies[] = invite
+files[] = invite_stats.module
+; Information added by drupal.org packaging script on 2011-12-05
+version = "7.x-2.1-beta2"
+core = "7.x"
+project = "invite"
+datestamp = "1323057641"
+

@@ -1,0 +1,24 @@
+name = Customer Profile Type UI
+description = Provides the ability to dynamically add new customer profile types for the commerce module. Also, defines new rules events and actions to disable customer profile panes.
+package = Commerce (contrib)
+core = 7.x
+dependencies[] = commerce_customer_ui
+
+; Base module files
+files[] = customer_profile_type_ui.module
+
+; Module includes
+files[] = includes/customer_profile_type_ui.ui.inc
+files[] = includes/customer_profile_type_ui.checkout_pane.inc
+
+; Rules includes
+files[] = customer_profile_type_ui.rules.inc
+
+
+
+; Information added by drupal.org packaging script on 2012-09-28
+version = "7.x-1.0-alpha1"
+core = "7.x"
+project = "customer_profile_type_ui"
+datestamp = "1348790471"
+

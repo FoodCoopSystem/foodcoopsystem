@@ -1,0 +1,42 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function commerce_decimal_quantities_schema() {
+  $schema = array();
+
+  $schema['commerce_decimal_quantities'] = array(
+    'description' => 'Product quantity types',
+    'export' => array(
+      'key' => 'product_type',
+      'key name' => 'Commerce Decimal Quantities',
+      'primary key' => 'product_type',
+      'identifier' => 'product_decimal',
+      'api' => array(
+        'api' => 'default_commerce_decimal_quantities_presets',
+        'owner' => 'commerce_decimal_quantities',
+        'minimum_version' => 1,
+        'current_version' => 1,
+      ),
+    ),
+    'fields' => array(
+      'product_type' => array(
+        'description' => 'The machine-readable name of the product type.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
+      'allow_decimal' => array(
+        'description' => 'Value is 0 if only integer quantity values are allowed. Any other value means decimal values.',
+        'type' => 'int',
+        'default' => 0,
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('product_type'),
+ );
+
+  return $schema;
+}

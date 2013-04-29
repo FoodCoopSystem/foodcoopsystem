@@ -1,0 +1,24 @@
+<?php
+
+/**
+ * @file
+ * User Relationship Elaborations installation hooks
+ */
+function user_relationship_elaborations_schema() {
+  $schema['user_relationship_elaborations'] = array(
+    'fields' => array(
+      'rid'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'elaboration' => array('type' => 'text', 'not null' => TRUE, 'size' => 'big'),
+    ),
+    'primary key' => array('rid'),
+  );
+
+  return $schema;
+}
+
+/**
+ * Uninstall
+ */
+function user_relationship_elaborations_uninstall() {
+  variable_del('user_relationships_elaborations_api_only');
+}

@@ -1,0 +1,75 @@
+diff --git a/crm/sites/all/modules/contrib/commerce_civicrm/commerce_civicrm.module b/crm/sites/all/modules/contrib/commerce_civicrm/commerce_civicrm.module
+index 2a3cad0..6922bfc 100755
+--- a/crm/sites/all/modules/contrib/commerce_civicrm/commerce_civicrm.module
++++ b/crm/sites/all/modules/contrib/commerce_civicrm/commerce_civicrm.module
+@@ -278,7 +278,7 @@
+   $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+   $billing_profile = $order_wrapper->commerce_customer_billing->value();
+   $billing_profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $billing_profile);
+-  $billing_address = $billing_profile_wrapper->commerce_customer_address->value();
++  $billing_address = $billing_profile_wrapper->field_adressfield->value();
+ 
+   // If we have a full name field, split it.
+   if (!empty($billing_address['name_line'])) {
+@@ -312,7 +312,9 @@
+   }
+ 
+   // Billing location.
+-  $address = array(
++
++  $address = array();
++      /**
+     1 => array(
+       'location_type'          => 'Billing',
+       'is_primary'             => TRUE,
+@@ -324,6 +326,8 @@
+       'country'                => $billing_address['country'],
+     )
+   );
++   * 
++   */
+ 
+   // Phone - TODO: where to get this information?
+   //$phone = array();
+@@ -347,10 +351,11 @@
+   if (!empty($order_wrapper->commerce_customer_shipping)) {
+     $shipping_profile = $order_wrapper->commerce_customer_shipping->value();
+     $shipping_profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $shipping_profile);
+-    $shipping_address = $shipping_profile_wrapper->commerce_customer_address->value();
++    $shipping_address = $shipping_profile_wrapper->field_adressfield->value();
+ 
+     // Shipping location.
+-    $address = array(
++    $address = array();
++      /**
+       1 => array(
+         'location_type'          => 'Home',
+         'is_primary'             => TRUE,
+@@ -362,6 +367,9 @@
+         'country'                => $shipping_address['country'],
+       )
+     );
++     * 
++     */
++
+ 
+     // Add / update the location.
+     $params = array('version' => '3.0', 'contact_id' => $cid, 'address' => $address);
+@@ -641,7 +649,7 @@
+     // Get billing details.
+     $billing_profile = $order_wrapper->commerce_customer_billing->value();
+     $billing_profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $billing_profile);
+-    $billing_address = $billing_profile_wrapper->commerce_customer_address->value();
++    $billing_address = $billing_profile_wrapper->field_adressfield->value();
+     $billing_name = (empty($billing_address['name_line']) ? $billing_address['first_name'] . ' ' . $billing_address['last_name'] : $billing_address['name_line']);
+ 
+     // Get shipping details.
+@@ -649,7 +657,7 @@
+     if (!empty($order_wrapper->commerce_customer_shipping)) {
+       $shipping_profile = $order_wrapper->commerce_customer_shipping->value();
+       $shipping_profile_wrapper = entity_metadata_wrapper('commerce_customer_profile', $shipping_profile);
+-      $shipping_address = $shipping_profile_wrapper->commerce_customer_address->value();
++      $shipping_address = $shipping_profile_wrapper->field_adressfield->value();
+       $shipping_name = (empty($shipping_address['name_line']) ? $shipping_address['first_name'] . ' ' . $shipping_address['last_name'] : $shipping_address['name_line']);
+     }
+ 

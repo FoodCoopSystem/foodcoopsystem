@@ -1,0 +1,13 @@
+name = Drupal for Firebug
+description = A helper extension for the Drupal for Firebug Firefox extension addon
+package = Development
+dependencies[] = drupalforfirebug_preprocess
+files[] = drupalforfirebug.module
+core = 7.x
+
+; Information added by drupal.org packaging script on 2012-06-12
+version = "7.x-1.3"
+core = "7.x"
+project = "drupalforfirebug"
+datestamp = "1339470078"
+

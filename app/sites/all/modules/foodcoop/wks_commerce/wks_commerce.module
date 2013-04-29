@@ -1,0 +1,221 @@
+<?php
+
+/**
+ * @file
+ * Code for the WKS Commerce feature.
+ */
+include_once 'wks_commerce.features.inc';
+
+/**
+ * Implementats hook_form_alter().
+ */
+function wks_commerce_form_alter(&$form, &$form_state, $form_id) {
+
+  // Quantity fields extra froms views.
+  if ($form_id == 'views_form_produkty_page' || $form_id == 'views_form_produkty_page_1'
+      || $form_id == 'views_form_produkty_page_2' || $form_id == 'views_form_produkty_page_3'
+      || $form_id == 'views_form_produkty_page_6' || $form_id == 'views_form_produkty_page_5'
+      || $form_id == 'views_form_produkty_page_7' || $form_id == 'views_form_produkty_page_8'
+      || $form_id == 'views_form_produkty_page_4' || $form_id == 'views_form_tags_page'
+      || $form_id == 'views_form_tagi_page') {
+
+    if (isset($form['add_to_cart_quantity'])) {
+      foreach ($form['add_to_cart_quantity'] as $kay => $value) {
+        $product = commerce_product_load($value['#product_id']);
+        if (is_object($product)) {
+          $preset = ctools_export_crud_load('commerce_decimal_quantities', $product->type);
+          if (is_object($preset) && $preset->allow_decimal) {
+            //Decimal quantities unset validation.
+            $form['add_to_cart_quantity'][$kay]['#default_value'] = '0.00';
+          }
+          else {
+            $form['add_to_cart_quantity'][$kay]['#default_value'] = '0';
+          }
+        }
+      }
+
+      $form['#validate'] = array('wks_commerce_decimal_quantities_validate', 'wks_commerce_stock_add_to_cart_validate');
+
+      //Plus minus quantities.
+      $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';
+      $form['#attached']['css'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.css';
+
+      foreach ($form['add_to_cart_quantity'] as $key => $value) {
+        if (is_numeric($key) && drupal_substr($key, 0, 1) != '#' && is_array($value)) {
+          $form['add_to_cart_quantity'][$key]['#theme_wrappers'] = array('quantity_plusminus_wrapper', 'form_element');
+        }
+      }
+    }
+  }
+
+  if ($form_id == 'views_form_commerce_cart_form_default') {
+    $form['#validate'] = array('wks_commerce_dots_comma_validate');
+    
+    /** Validate after update
+    foreach ($form_state['order']->commerce_line_items['und'] as $kay => $line_item_id) {
+     
+    if (is_numeric($kay)) {
+      // The product SKU that will have its stock level adjusted.
+          $line_item = commerce_line_item_load($line_item_id);
+          $product_id =  $line_item->commerce_product['und'][0]['product_id'];
+          $product = commerce_product_load($product_id);
+          $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
+      if (!(isset($product_wrapper->commerce_stock_override) && $product_wrapper->commerce_stock_override->value() == 1)) {
+         unset($form['add_to_cart_quantity'][$kay]);
+      }
+
+    }
+  }
+     * 
+     */
+  }
+  
+
+  
+  if ($form_id == 'views_exposed_form') {
+    global $user;
+    
+    //Hide form in provider view.
+    if(in_array('Dostawca', $user->roles)) {
+      unset($form['#info']['filter-field_dostawca_tid']);
+      $form['field_dostawca_tid'] = array(
+        '#type' => 'hidden',
+      );    
+    }
+  }
+  
+  if ($form_id == 'typ_produktu_node_form') {
+   
+   $form['field_nowy_produkt']['und']['actions']['bundle']['#options']['select'] = t('- Select -');
+   $form['field_nowy_produkt']['und']['actions']['bundle']['#default_value'] = 'select';
+    
+  }
+}
+
+
+/**
+ * Implements of hook_validate.
+ */
+function wks_commerce_decimal_quantities_validate(&$form, &$form_state) {
+
+  if (is_array($form['add_to_cart_quantity'])) {
+
+    foreach ($form['add_to_cart_quantity'] as $kay => $value) {
+
+      if (!empty($value['#product_id'])) {
+        $product = commerce_product_load($value['#product_id']);
+        if (is_object($product)) {
+          $preset = ctools_export_crud_load('commerce_decimal_quantities', $product->type);
+          if (is_object($preset) && $preset->allow_decimal) {
+
+            // Replace comma at dot.
+            $form_state['values']['add_to_cart_quantity'][$kay] = str_replace(",", ".", $form_state['values']['add_to_cart_quantity'][$kay]);
+          }
+          else {
+
+            //Decimal quantities validation for unit products.
+            if (strpos($form['add_to_cart_quantity'][$kay]['#value'], ".") || strpos($form['add_to_cart_quantity'][$kay]['#value'], ",")) {
+              form_set_error('error', t('Value must be integer!'));
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+/**
+ *  Replace commas at dot in cart view
+ * @param type $form
+ * @param type $form_state
+ */
+function wks_commerce_dots_comma_validate(&$form, &$form_state) {
+if(isset($form_state['values']['edit_quantity'])) {
+  foreach ($form_state['values']['edit_quantity'] as $kay => $value) {
+    $form_state['values']['edit_quantity'][$kay] = str_replace(",", ".", $form_state['values']['edit_quantity'][$kay]);
+  }
+}
+}
+
+/**
+ * Form validate handler: validate checkout form.
+ *
+ * Make sure all items in the cart are in stock
+ */
+function wks_commerce_stock_add_to_cart_validate($form, &$form_state) {
+  foreach ($form_state['complete form']['add_to_cart_quantity'] as $kay => $values) {
+
+    if (is_numeric($kay)) {
+      if ($values['#value'] != 0) {
+        $qty = $values['#value'];
+        $product_id = $values['#product_id'];
+        $product = commerce_product_load($product_id);
+        $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
+        
+        //If commerce stock is enable remove quantity from stock.
+        if(isset($product->commerce_stock)) {
+        if (!(isset($product_wrapper->commerce_stock_override) && $product_wrapper->commerce_stock_override->value() == 1)) {
+          if (commerce_stock_product_check_out_of_stock($product_id, $qty, $remaining_stock)) {
+            form_set_error("stock_error", t('The maximum quantity of %title that can be purchased is %max.', array('%title' => $product->title, '%max' => $remaining_stock)));
+          }
+          else {
+            // Subtract the sold amount from the available stock level.
+            wks_commerce_stock_adjust($product, -$qty);
+          }
+        }
+      }
+      }
+    }
+  }
+}
+
+
+/**
+ * Form validate handler: validate checkout form.
+ *
+ * Make sure all items in the cart are in stock
+ */
+function wks_commerce_stock_validate($form, &$form_state) {
+
+  foreach ($form_state['complete form']['add_to_cart_quantity'] as $kay => $values) {
+
+    if (is_numeric($kay)) {
+        $product_id = $values['#product_id'];
+        $product = commerce_product_load($product_id);
+        $product_wrapper = entity_metadata_wrapper('commerce_product', $product);
+        if (!(isset($product_wrapper->commerce_stock_override) && $product_wrapper->commerce_stock_override->value() == 1)) {
+        
+          unset($form['add_to_cart_quantity'][$kay]);
+        }
+
+    }
+  }
+}
+
+/**
+ * Adjusts a particular product SKU by a certain value.
+ * A positive integer will add to stock, a negative integer will remove from
+ * stock. Somewhat the equivalent of uc_stock_adjust().
+ *
+ * @param $product
+ *   The product for which to change the stock level.
+ * @param $qty
+ *   The quantity to add to the stock level.
+ */
+function wks_commerce_stock_adjust($product, $qty) {
+
+  $wrapper = entity_metadata_wrapper('commerce_product', $product);
+
+  if(is_object($wrapper->commerce_stock)){
+  $new_stock = $wrapper->commerce_stock->value() + intval($qty);
+  $wrapper->commerce_stock->set($new_stock);
+  $result = $wrapper->save();
+
+  if ($result) {
+    watchdog('commerce_stock', 'Modified stock level of product %sku by %amount', array('%sku' => $product->sku, '%amount' => $qty));
+  }
+  else {
+    watchdog('commerce_stock', 'Failed attempt to modify stock level of product %sku by %amount', array('%sku' => $product->sku, '%amount' => $qty), WATCHDOG_ERROR);
+  }
+  }
+}

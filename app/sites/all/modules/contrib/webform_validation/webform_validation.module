@@ -1,0 +1,408 @@
+<?php
+
+/**
+ * @file
+ * Add validation rules to webforms
+ */
+
+include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform_validation') . '/' . 'webform_validation.validators.inc';
+include_once DRUPAL_ROOT . '/' . drupal_get_path('module', 'webform_validation') . '/' . 'webform_validation.rules.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function webform_validation_menu() {
+  $items = array();
+
+  $items['node/%webform_menu/webform/validation'] = array(
+    'title' => 'Form validation',
+    'page callback' => 'webform_validation_manage',
+    'page arguments' => array(1),
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'file' => 'webform_validation.admin.inc',
+    'weight' => 3,
+    'type' => MENU_LOCAL_TASK,
+  );
+
+  $items['node/%webform_menu/webform/validation/add/%'] = array(
+    'title' => 'Add validation',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_validation_manage_rule', 1, 'add', 5),
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'file' => 'webform_validation.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['node/%webform_menu/webform/validation/edit/%/%webform_validation_rule'] = array(
+    'title' => 'Edit rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_validation_manage_rule', 1, 'edit', 5, 6),
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'file' => 'webform_validation.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['node/%webform_menu/webform/validation/delete/%webform_validation_rule'] = array(
+    'title' => 'Delete rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('webform_validation_delete_rule', 5),
+    'access callback' => 'node_access',
+    'access arguments' => array('update', 1),
+    'file' => 'webform_validation.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Loads validation rule from menu parameter
+ */
+function webform_validation_rule_load($ruleid) {
+  return webform_validation_get_rule($ruleid);
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function webform_validation_theme() {
+  return array(
+    'webform_validation_manage_add_rule' => array(
+      'variables' => array(
+        'nid' => NULL,
+      ),
+    ),
+    'webform_validation_manage_overview' => array(
+      'variables' => array(
+        'rules' => NULL,
+        'node' => NULL,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function webform_validation_form_alter(&$form, &$form_state, $form_id) {
+  if (strpos($form_id, 'webform_client_form_') !== FALSE) {
+    $form['#validate'][] = 'webform_validation_validate';
+  }
+}
+
+/**
+ * Webform validation handler to validate against the given rules
+ */
+function webform_validation_validate($form, &$form_state) {
+  $page_count = 1;
+  $nid = $form_state['values']['details']['nid'];
+  $node = node_load($nid);
+  $values = isset($form_state['values']['submitted']) ? $form_state['values']['submitted'] : NULL;
+  $flat_values = _webform_client_form_submit_flatten($node, $values);
+  $rules = webform_validation_get_node_rules($nid);
+
+  // Get number of pages for this webform
+  if (isset($form_state['webform']['page_count'])) {
+    $page_count = $form_state['webform']['page_count'];
+  }
+  else if (isset($form_state['storage']['page_count'])) {
+    $page_count = $form_state['storage']['page_count'];
+  }
+
+  // Filter out rules that don't apply to this step in the multistep form
+  if ($values && $page_count && $page_count > 1) {
+    $current_page_components = webform_validation_get_field_keys($form_state['values']['submitted'], $node);
+    if ($rules) {
+       // filter out rules that don't belong in the current step
+      foreach ($rules as $ruleid => $rule) {
+        // get all the component formkeys for this specific validation rule
+        $rule_formkeys = webform_validation_rule_get_formkeys($rule);
+        $rule_applies_to_current_page = FALSE;
+        if (!empty($rule_formkeys)) {
+          foreach ($rule_formkeys as $formkey) {
+            if (in_array($formkey, $current_page_components)) {
+              // this rule applies to the current page,
+              // because one of the rule components is on the page
+              $rule_applies_to_current_page = TRUE;
+            }
+          }
+        }
+
+        if (!$rule_applies_to_current_page) {
+          unset($rules[$ruleid]);
+        }
+      }
+    }
+  }
+
+  if ($rules) {
+    foreach ($rules as $rule) {
+      // create a list of components that need validation against this rule (component id => user submitted value)
+      $items = array();
+      foreach ($rule['components'] as $cid => $component) {
+        if (isset($flat_values[$cid])) {
+          $items[$cid] = $flat_values[$cid];
+        }
+      }
+      // prefix array keys to avoid reindexing by the module_invoke_all function call
+      $items = webform_validation_prefix_keys($items);
+      $component_definitions = webform_validation_prefix_keys($node->webform['components']);
+      // have the submitted values validated
+      $errors = module_invoke_all("webform_validation_validate", $rule['validator'], $items, $component_definitions, $rule);
+      if ($errors) {
+        $errors = webform_validation_unprefix_keys($errors);
+        $components = webform_validation_unprefix_keys($component_definitions);
+        foreach ($errors as $item_key => $error) {
+          // build the proper form element error key, taking into account hierarchy
+          $error_key = 'submitted][' . webform_validation_parent_tree($item_key, $components) . $components[$item_key]['form_key'];
+          form_set_error($error_key, $error);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Recursive helper function to get all field keys (including fields in fieldsets)
+ */
+function webform_validation_get_field_keys($submitted, $node) {
+  static $fields = array();
+  foreach (element_children($submitted) as $child) {
+    if (is_array($submitted[$child]) && element_children($submitted[$child])) {
+      // only keep searching recursively if it's a fieldset
+      $group_components = _webform_validation_get_group_types();
+      if (in_array(_webform_validation_get_component_type($node, $child), $group_components)) {
+        webform_validation_get_field_keys($submitted[$child], $node);
+      }
+      else {
+        $fields[$child] = $child;
+      }
+
+    }
+    else {
+      $fields[$child] = $child;
+    }
+  }
+  return $fields;
+}
+
+/**
+ * Recursively add the parents for the element, to be used as first argument to form_set_error
+ */
+function webform_validation_parent_tree($cid, $components) {
+  $output = '';
+  if ($pid = $components[$cid]['pid']) {
+    $output .= webform_validation_parent_tree($pid, $components);
+    $output .= $components[$pid]['form_key'] . '][';
+  }
+  return $output;
+}
+
+/**
+ * Get an array of formkeys for all components that have been assigned to a rule
+ */
+function webform_validation_rule_get_formkeys($rule) {
+  $formkeys = array();
+  if (isset($rule['components'])) {
+    foreach ($rule['components'] as $cid => $component) {
+      $formkeys[] = $component['form_key'];
+    }
+  }
+  return $formkeys;
+}
+
+/**
+ * Prefix numeric array keys to avoid them being reindexed by module_invoke_all
+ */
+function webform_validation_prefix_keys($arr) {
+  $ret = array();
+  foreach ($arr as $k => $v) {
+    $ret['item_' . $k] = $v;
+  }
+  return $ret;
+}
+
+/**
+ * Undo prefixing numeric array keys to avoid them being reindexed by module_invoke_all
+ */
+function webform_validation_unprefix_keys($arr) {
+  $ret = array();
+  foreach ($arr as $k => $v) {
+    $new_key = str_replace('item_', '', $k);
+    $ret[$new_key] = $v;
+  }
+  return $ret;
+}
+/**
+ * Theme the 'add rule' list
+ */
+function theme_webform_validation_manage_add_rule($variables) {
+  $nid = $variables['nid'];
+  $output = '';
+  $validators = webform_validation_get_validators();
+
+  if ($validators) {
+    $output = '<h3>' . t('Add a validation rule') . '</h3>';
+    $output .= '<dl>';
+    foreach ($validators as $validator_key => $validator_info) {
+      $item = '';
+      $url = 'node/' . $nid . '/webform/validation/add/' . $validator_key;
+      $components = ' (' . implode(', ', $validator_info['component_types']) . ')';
+      $item = '<dt>' . l($validator_info['name'], $url, array("query" => drupal_get_destination())) . '</dt>';
+      $item .= '<dd>';
+      if ($validator_info['description']) {
+        $item .= $validator_info['description'] . ' ';
+      }
+      $item .= $components . '</dd>';
+      $output .= $item;
+    }
+    $output .= '</dl>';
+  }
+  return $output;
+}
+
+/**
+ * Implements hook_webform_validation().
+ */
+function webform_validation_webform_validation($type, $op, $data) {
+  if ($type == 'rule' && in_array($op, array('add', 'edit'))) {
+    if (module_exists('i18nstrings') && isset($data['error_message'])) {
+      i18nstrings_update('webform_validation:error_message:' . $data['ruleid'] . ':message', $data['error_message']);
+    }
+  }
+}
+
+/**
+ * Implements hook_node_insert().
+ */
+function webform_validation_node_insert($node) {
+  if (module_exists('clone')) {
+    if (in_array($node->type, webform_variable_get('webform_node_types'))) {
+      webform_validation_node_clone($node);
+    }
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function webform_validation_node_delete($node) {
+  $rules = webform_validation_get_node_rules($node->nid);
+  if ($rules) {
+    foreach (array_keys($rules) as $ruleid) {
+      webform_dynamic_delete_rule($ruleid);
+    }
+  }
+}
+
+/**
+ * Adds support for node_clone module
+ */
+function webform_validation_node_clone($node) {
+  if (isset($node->clone_from_original_nid)) {
+    $original_nid = $node->clone_from_original_nid;
+    // Get existing rules for original node
+    $rules = webform_validation_get_node_rules($original_nid);
+    if ($rules) {
+      foreach ($rules as $orig_ruleid => $rule) {
+        unset($rule['ruleid']);
+        $rule['action'] = 'add';
+        $rule['nid'] = $node->nid; // attach existing rules to new node
+        $rule['rule_components'] = $rule['components'];
+        webform_validation_rule_save($rule);
+      }
+    }
+  }
+}
+
+/**
+ * Save a validation rule. Data comes from the admin form
+ * or nodeapi function in case of node clone
+ */
+function webform_validation_rule_save($values) {
+  // save rules data
+  if ($values['action'] == 'add') {
+    drupal_write_record('webform_validation_rule', $values);
+    $ruleid = $values['ruleid'];
+    if ($ruleid && array_filter($values['rule_components'])) {
+      webform_validation_save_rule_components($ruleid, array_filter($values['rule_components']));
+      module_invoke_all('webform_validation', 'rule', 'add', $values);
+    }
+  }
+
+  if ($values['action'] == 'edit') {
+    drupal_write_record('webform_validation_rule', $values, 'ruleid');
+    $ruleid = $values['ruleid'];
+    // delete earlier component records for this rule id*/
+    db_delete('webform_validation_rule_components')
+    ->condition('ruleid', $ruleid)
+    ->execute();
+    if ($components = array_filter($values['rule_components'])) {
+      webform_validation_save_rule_components($ruleid, $components);
+      module_invoke_all('webform_validation', 'rule', 'edit', $values);
+    }
+  }
+}
+
+/**
+ * Save components attached to a specific rule
+ */
+function webform_validation_save_rule_components($ruleid, $components) {
+  foreach ($components as $cid => $component) {
+    $id = db_insert('webform_validation_rule_components')
+    ->fields(array(
+      'ruleid' => $ruleid,
+      'cid' => $cid,
+    ))
+  ->execute();
+  }
+}
+
+/**
+ * Given a webform node, get the component type based on a given component key
+ */
+function _webform_validation_get_component_type($node, $component_key) {
+  if ($node->webform['components']) {
+    foreach ($node->webform['components'] as $component) {
+      if ($component['form_key'] == $component_key) {
+        return $component['type'];
+      }
+    }
+  }
+  return FALSE;
+}
+
+/**
+ * Get all webform components that are defined as a group
+ */
+function _webform_validation_get_group_types(){
+  $types = array();
+  foreach(webform_components() as $name => $component){
+    if(isset($component['features']['group']) && $component['features']['group']){
+      $types[] = $name;
+    }
+  }
+  return $types;
+}
+
+/**
+ * Implementation of hook_webform_validator_alter().
+ */
+function webform_validation_webform_validator_alter(&$validators) {
+  // Add support for the Select (or Other) module
+  if (module_exists('select_or_other')) {
+    // if this module exists, all select components can now except user input.
+    // Thus we provide those components the same rules as a textfield
+    if ($validators) {
+      foreach ($validators as $validator_name => $validator_info) {
+        if (in_array('textfield', $validator_info['component_types'])) {
+          $validators[$validator_name]['component_types'][] = 'select';
+        }
+      }
+    }
+  }
+}

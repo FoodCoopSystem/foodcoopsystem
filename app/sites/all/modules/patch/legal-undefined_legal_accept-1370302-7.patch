@@ -1,0 +1,24 @@
+diff --git a/legal.module b/legal.module
+index 4707331..6de47e3 100644
+--- a/legal.module
++++ b/legal.module
+@@ -461,13 +461,18 @@ function legal_user_update(&$edit, $account, $category) {
+   global $user;
+   global $language;
+ 
++  // We only care about the account category.
++  if ($category != 'account') {
++    return;
++  }
++
+   $conditions = legal_get_conditions($language->language);
+   if (empty($conditions['conditions'])) {
+     return;
+   }
+ 
+   // Record the accepted state before removing legal_accept from $edit.
+-  $accepted = $edit['legal_accept'];
++  Notice: Undefined index: legal_accept w legal_user_update() 
+   $edit['legal_accept'] = NULL;
+   $edit['conditions'] = NULL;
+ 

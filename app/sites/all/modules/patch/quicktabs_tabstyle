@@ -1,0 +1,106 @@
+diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+similarity index 100%
+rename from crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
+rename to crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+--- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
++++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+Binary files differ
+diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+index 9b4dce3..f05a701 100755
+--- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
++++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+@@ -1,17 +1,17 @@
+ 
+ .quicktabs_main.quicktabs-style-wkstabstyle{
+-  clear:both;
++    clear:both;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle{
+-  margin:0 0 10px 0;
+-  padding: 0px 9px 0px 2px;
+-  font-size:1em;
+-  list-style: none;
+-  height:21px;
+-  background:transparent;
++    margin:0 0 10px 0;
++    padding: 0px 9px 0px 2px;
++    font-size:1em;
++    list-style: none;
++    height:21px;
++    background:transparent;
+ }
+ *html ul.quicktabs-tabs.quicktabs-style-wkstabstyle li{
+-  margin-bottom:-5px;
++    margin-bottom:-5px;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li{
+     background: #61c523;
+@@ -22,42 +22,42 @@
+     padding: 0px;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li a{
+-  font:bold 12px/170% Verdana;
+-  font-size-adjust:none;
+-  display: block;
+-  margin: 0;
+-  padding:4px 12px 4px 12px;
+-  border-width: 0;
+-  font-weight:bold;
+-  text-decoration:none;
+-  background: transparent;
+-  color:#fff;
++    font:bold 12px/170% Verdana;
++    font-size-adjust:none;
++    display: block;
++    margin: 0;
++    padding:4px 12px 4px 12px;
++    border-width: 0;
++    font-weight:bold;
++    text-decoration:none;
++    background: transparent;
++    color:#fff;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li:hover a{
+-  background:transparent;
+-  color:#fff;
++    background:transparent;
++    color:#fff;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li:hover{
+-    
++
+     border: 2px solid #377e1e;
+-  background:#377e1e;
+-  
++    background:#377e1e;
++
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a,
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a:hover{
+-  background:transparent;
+-  color:#326301;
+-  border: 2px solid #377e1e;
+-  border-radius: 10px;
++    background:transparent;
++    color:#326301;
++    border: 2px solid #377e1e;
++    border-radius: 10px;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active{
+     border: none;
+-    background:url('images/active.png') 50% bottom no-repeat transparent;
+-  height: 39px;
++    background:url('images/active-t.png') 50% bottom no-repeat transparent;
++    height: 39px;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a{
+-  background:transparent;
+-  color:#377e1e;
+-  border: 2px solid #377e1e;
+-  border-radius: 10px;
++    background:transparent;
++    color:#377e1e;
++    border: 2px solid #377e1e;
++    border-radius: 10px;
+ }
+\ No newline at end of file

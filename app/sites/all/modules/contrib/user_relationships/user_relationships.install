@@ -1,0 +1,130 @@
+<?php
+
+/**
+ * @file
+ * User Relationships API Module installation file.
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function user_relationships_schema() {
+  $schema['user_relationships'] = array(
+    'fields' => array(
+      'rid'           => array('type' => 'int', 'not null' => TRUE),
+      'requester_id'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'requestee_id'  => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'rtid'          => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'approved'      => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'created'       => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'changed'       => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'flags'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+    ),
+    'indexes' => array(
+      'relationship' => array('requester_id', 'requestee_id'),
+      'requester_id' => array('requester_id'),
+      'requestee_id' => array('requestee_id'),
+      'rid' => array('rid'),
+    ),
+  );
+
+  $schema['user_relationship_types'] = array(
+    'fields' => array(
+      'rtid'              => array('type' => 'serial', 'unsigned' => TRUE, 'not null' => TRUE),
+      'name'              => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+      'plural_name'       => array('type' => 'varchar', 'length' => 255, 'not null' => TRUE, 'default' => ''),
+      'is_oneway'         => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'is_reciprocal'     => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'requires_approval' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0, 'size' => 'tiny'),
+      'expires_val'       => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+    ),
+    'unique keys' => array(
+      'name'  => array('name'),
+    ),
+    'primary key' => array('rtid')
+  );
+
+  return $schema;
+}
+
+
+/**
+ * Implements hook_uninstall().
+ */
+function user_relationships_uninstall() {
+  drupal_load('module', 'user_relationships');
+  $message_defaults = _user_relationships_default_messages(array());
+  $message_keys = array_merge(array_keys($message_defaults['informational']), array_keys($message_defaults['error']));
+  foreach ($message_keys as $key) {
+    variable_del("user_relationships_msg_{$key}");
+  }
+  variable_del('user_relationships_top');
+  variable_del('user_relationships_show_user_pictures');
+  variable_del('user_relationships_show_direct_links');
+  variable_del('user_relationships_requests_link');
+  variable_del('user_relationships_relationships_per_page');
+  variable_del('user_relationships_position');
+  variable_del('user_relationships_left');
+  variable_del('user_relationships_last_expire');
+  variable_del('user_relationships_allow_multiple');
+  variable_del('user_relationships_allow_auto_approve');
+  variable_del('user_relationships_enable_author_pane');
+  variable_del('user_relationships_author_pane_rtids');
+}
+
+/**
+ * Migrate existing message settings.
+ */
+function user_relationships_update_7000() {
+  // Get all variables with the old prefix.
+  $result = db_query("SELECT * FROM {variable} WHERE name LIKE 'user_relationships_ui_msg_%'");
+  foreach ($result as $variable) {
+    // Save as new variable.
+    variable_set(str_replace('_ui', '', $variable->name), unserialize($variable->value));
+    // Delete the old variable.
+    variable_del($variable->name);
+  }
+}
+
+/**
+ * Remove user relationship type roles tables.
+ */
+function user_relationships_update_7001() {
+  drupal_set_message(('Allowed roles settings for user relationship types must now be set by configuring the corresponding permissions explicitly.'));
+  db_drop_table('user_relationship_type_roles');
+  db_drop_table('user_relationship_type_roles_receive');
+}
+
+/**
+ *  Change {user_relationships}.rid from type serial to int.
+ */
+function user_relationships_update_7002() {
+  db_change_field('user_relationships', 'rid', 'rid', array('type' => 'int', 'not null' => TRUE));
+}
+
+/**
+ * Change column names from created_at and updated_at to created and changed.
+ */
+function user_relationships_update_7003() {
+  db_change_field(
+    'user_relationships',
+    'created_at',
+    'created',
+    array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0)
+  );
+  db_change_field(
+    'user_relationships',
+    'updated_at',
+    'changed',
+    array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0)
+  );
+}
+
+/**
+ * Drop indexes that harm performance from the {user_relationships} table.
+ */
+function user_relationships_update_7004() {
+  db_drop_primary_key('user_relationships');
+  db_drop_index('user_relationships', 'rtid');
+  db_add_index('user_relationships', 'relationship', array('requester_id', 'requestee_id'));
+}

@@ -1,0 +1,39 @@
+diff --git a/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module b/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
+index 609f79b..15f9727 100644
+--- a/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
++++ b/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
+@@ -28,6 +28,7 @@
+     if (isset($form['edit_quantity'])) {
+       $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';
+       $form['#attached']['css'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.css';
++      
+       foreach ($form['edit_quantity'] as $key => $value) {
+         if (is_numeric($key) && drupal_substr($key, 0, 1) != '#' && is_array($value)) {
+           $form['edit_quantity'][$key]['#theme_wrappers'] = array('quantity_plusminus_wrapper', 'form_element');
+@@ -35,6 +36,25 @@
+       }
+     }
+   }
+!!! Now in wks_commerce_module
++  
++    // Quantity fields extra froms views
++  if ($form_id == 'views_form_produkty_page' || $form_id == 'views_form_produkty_page_1' 
++      || $form_id == 'views_form_produkty_page_2' || $form_id == 'views_form_produkty_page_3' 
++      || $form_id == 'views_form_produkty_page_6' || $form_id == 'views_form_produkty_page_5') {
++
++    if (isset($form['add_to_cart_quantity'])) {
++      $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';
++      $form['#attached']['css'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.css';
++      
++      foreach ($form['add_to_cart_quantity'] as $key => $value) {
++        if (is_numeric($key) && drupal_substr($key, 0, 1) != '#' && is_array($value)) {
++          $form['add_to_cart_quantity'][$key]['#theme_wrappers'] = array('quantity_plusminus_wrapper', 'form_element');
++        }
++      }
++    }
++  }
++  
++  
+ 
+ }
+ 

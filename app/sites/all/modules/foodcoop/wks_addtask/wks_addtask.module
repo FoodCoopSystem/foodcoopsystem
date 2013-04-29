@@ -1,0 +1,59 @@
+<?php
+
+
+
+
+
+/**
+ * Implements hook_rules_action_info().
+ * 
+ */
+function wks_addtask_rules_action_info() {
+
+  return array(
+    'add_task' => array(
+      'label' => t('Add task to turn'),
+      'parameter' => array(
+        'node' => array(
+          'type' => 'node',
+          'label' => t('Referenced turn'),
+        ),
+      ),
+      'group' => t('Turn'),
+      'base' => 'wks_addtask_rules_action_add_task',
+    ),
+  );
+}
+
+/*
+ * Action to add task
+ */
+
+function wks_addtask_rules_action_add_task($turn) {
+
+  $types = array('kasjer', 'kasjer_2', 'kasjer_3', 'koordynacja', 'koordynacja_2', 'nadz_r_ksi_gowo_ci', 'nadz_r_ksi_gowo_ci_2', 'sprz_tanie', 'sprz_tanie_2', 'sprz_tanie_3', 'transport', 'transport_2', 'wazacy', 'wazacy_2', 'wazacy_3');
+
+  foreach ($types as $type) {
+    
+    $text = '[Tura: ' . $turn->title . ']';
+
+    $node = new stdClass();
+    $node->type = $type;
+    node_object_prepare($node);
+
+    $node->status = 1;
+    $node->title = $text;
+    $node->language = LANGUAGE_NONE;
+
+    $node->field_tura['und'][0]['nid'] = $turn->nid;
+    $node->field_poczatek = $turn->field_poczatek;
+    $node->field_zgloszeni = array();
+    $node->field_otwarte_zgloszenia['und'][0]['value'] = 1;
+    $node->language = 'pl';
+
+    $path = 'task/for_turn_' . $type . date('YmdHis');
+    $node->path = array('alias' => $path);
+
+    node_save($node);
+  }
+}

@@ -1,0 +1,2344 @@
+<?php
+/**
+ * @file
+ * Allows administrators to specify how each taxonomy category can be used by each role.
+ */
+
+/**
+ * Maximum number of nodes for which to update node access within the module.
+ * If it's greater, then node_access_needs_rebuild() will be set instead.
+ */
+define('TAXONOMY_ACCESS_MAX_UPDATE', 500);
+
+/**
+ * Base path for module administration pages.
+ */
+define('TAXONOMY_ACCESS_CONFIG', 'admin/config/people/taxonomy_access');
+
+/**
+ * Cache a list of all roles.
+ *
+ * @param permission
+ *   (optional) A string containing a permission.  If set, only roles
+ *   containing that permission are returned.  Defaults to NULL.
+ *
+ * @return
+ *   An array of roles from user_roles().
+ *
+ * @todo
+ *   Replace this function once http://drupal.org/node/6463 is backported.
+ */
+function _taxonomy_access_user_roles($permission = NULL) {
+  static $roles = array();
+  if (!isset($roles[$permission])) {
+    $roles[$permission] = user_roles(FALSE, $permission);
+  }
+  return $roles[$permission];
+}
+
+
+
+
+/*****************************************************************************/
+/*************************** HOOK IMPLEMENTATIONS ****************************/
+/*****************************************************************************/
+
+
+/**
+ * Implements hook_enable().
+ *
+ * Housekeeping: while we were away, did you delete any terms/vocabs/roles?
+ * 1: Delete ta, tad rows for missing roles.
+ * 2: Delete ta rows for missing terms.
+ * 3: Delete tad rows for missing vocabs.
+ */
+function taxonomy_access_enable() {
+  // Delete any records for roles not in {roles}.
+  $roles = _taxonomy_access_user_roles();
+  $config_roles =
+    db_query("SELECT DISTINCT rid FROM {taxonomy_access_default}")
+    ->fetchCol();
+  $missing_roles = array_diff($config_roles, array_keys($roles));
+
+  // Core flags node access for rebuild on enable, so skip node updates.
+  foreach ($missing_roles as $rid) {
+    taxonomy_access_delete_role_grants($rid, FALSE);
+  }
+
+  // Delete any term configurations not in {taxonomy_term_data}.
+  $term_ids =
+    db_query(
+      "SELECT ta.tid
+      FROM {taxonomy_access_term} ta
+      LEFT JOIN {taxonomy_term_data} td ON ta.tid = td.tid
+      WHERE ta.tid <> 0 AND td.tid IS NULL"
+    )
+    ->fetchCol()
+    ;
+
+  // Core flags node access for rebuild on enable, so skip node updates.
+  taxonomy_access_delete_term_grants($term_ids, NULL, FALSE);
+  unset($term_ids);
+
+  // Delete any defaults for vocabularies not in {taxonomy_vocabulary}.
+  $vocab_ids =
+    db_query(
+      "SELECT tad.vid
+      FROM {taxonomy_access_default} tad
+      LEFT JOIN {taxonomy_vocabulary} tv ON tad.vid = tv.vid
+      WHERE tad.vid <> 0 AND tv.vid IS NULL"
+    )
+    ->fetchCol()
+    ;
+
+  // Core flags node access for rebuild on enable, so skip node updates.
+  taxonomy_access_delete_default_grants($vocab_ids, FALSE);
+  unset($vocab_ids);
+}
+
+/**
+ * Implements hook_boot().
+ */
+function taxonomy_access_boot() {
+  // Register our shutdown function.
+  drupal_register_shutdown_function('taxonomy_access_shutdown');
+}
+
+/**
+ * Implements hook_init().
+ */
+function taxonomy_access_init() {
+  $path = drupal_get_path('module', 'taxonomy_access');
+  drupal_add_css($path . '/taxonomy_access.css');
+}
+
+/**
+ * Implements hook_theme().
+ */
+function taxonomy_access_theme() {
+  return array(
+    'taxonomy_access_admin_form' => array(
+      'render element' => 'form',
+      'file' => 'taxonomy_access.admin.inc',
+    ),
+  );
+}
+/**
+ * Implements hook_menu().
+ */
+function taxonomy_access_menu() {
+  $items = array();
+
+  $items[TAXONOMY_ACCESS_CONFIG] = array(
+    'title' => 'Taxonomy access control',
+    'description' => 'Taxonomy-based access control for content',
+    'page callback' => 'taxonomy_access_admin',
+    'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
+  );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role'] = array(
+    'title' => 'Configure role access rules',
+    'description' => 'Configure taxonomy access control',
+    'page callback' => 'taxonomy_access_admin',
+    'access arguments' => array('administer permissions'),
+    'file' => 'taxonomy_access.admin.inc',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/edit'] = array(
+    'title callback' => 'taxonomy_access_role_edit_title',
+    'title arguments' => array(5),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_access_admin_form', 5),
+    'access callback' => array('taxonomy_access_role_edit_access'),
+    'access arguments' => array(5),
+    'file' => 'taxonomy_access.admin.inc',
+  );
+  $items[TAXONOMY_ACCESS_CONFIG . '/role/%/delete'] = array(
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('taxonomy_access_admin_delete_role', 5),
+    'access callback' => array('taxonomy_access_role_delete_access'),
+    'access arguments' => array(5),
+    'file' => 'taxonomy_access.admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['taxonomy_access/autocomplete'] = array(
+    'title' => 'Autocomplete taxonomy',
+    'page callback' => 'taxonomy_access_autocomplete',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  return $items;
+}
+
+/**
+ * Title callback for role edit form.
+ */
+function taxonomy_access_role_edit_title($rid) {
+  $roles = _taxonomy_access_user_roles();
+  return t('Access rules for @role', array('@role' => $roles[$rid]));
+}
+
+/**
+ * Access callback for role edit form.
+ */
+function taxonomy_access_role_edit_access($rid) {
+  if (!user_access('administer permissions')) {
+    return FALSE;
+  }
+
+  $roles = _taxonomy_access_user_roles();
+  if (empty($roles[$rid])) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+
+/**
+ * Access callback for role deletion form.
+ */
+function taxonomy_access_role_delete_access($rid) {
+  if (!user_access('administer permissions')) {
+    return FALSE;
+  }
+  if (($rid == DRUPAL_ANONYMOUS_RID) || ($rid == DRUPAL_AUTHENTICATED_RID)) {
+    return FALSE;
+  }
+
+  $roles = _taxonomy_access_user_roles();
+  if (empty($roles[$rid])) {
+    return FALSE;
+  }
+
+  return TRUE;
+}
+
+/**
+ * Implements hook_user_role_delete().
+ */
+function taxonomy_access_user_role_delete($role) {
+  // Do not update node access since the role will no longer exist.
+  taxonomy_access_delete_role_grants($role->rid, FALSE);
+}
+
+/**
+ * Implements hook_taxonomy_vocabulary_delete().
+ */
+function taxonomy_access_taxonomy_vocabulary_delete($vocab) {
+  taxonomy_access_delete_default_grants($vocab->vid);
+}
+
+/**
+ * Implements hook_taxonomy_term_delete().
+ */
+function taxonomy_access_taxonomy_term_delete($term) {
+  taxonomy_access_delete_term_grants($term->tid);
+}
+
+/**
+ * Implements hook_node_grants().
+ * Gives access to taxonomies based on the taxonomy_access table.
+ */
+function taxonomy_access_node_grants($user, $op) {
+  $roles = is_array($user->roles) ? array_keys($user->roles) : -1;
+  return array('taxonomy_access_role' => $roles);
+}
+
+/**
+ * Implements hook_node_access_records().
+ */
+function taxonomy_access_node_access_records($node) {
+  // Only write grants for published nodes.
+  if ($node->status) {
+    // Make sure to reset caches for accurate grant values.
+    return _taxonomy_access_node_access_records($node->nid, TRUE);
+  }
+}
+
+/**
+ * Implements hook_field_info_alter().
+ *
+ * @todo
+ *   Should we somehow pass the originl callback to our callback dynamically?
+ */
+function taxonomy_access_field_info_alter(&$info) {
+
+  // Return if there's no term reference field type.
+  if (empty($info['taxonomy_term_reference'])) {
+    return;
+  }
+
+  // Use our custom callback in order to disable list while generating options.
+  $info['taxonomy_term_reference']['settings']['options_list_callback'] = '_taxonomy_access_term_options';
+}
+
+/**
+ * Implements hook_field_attach_validate().
+ *
+ * For form validation:
+ *   @see taxonomy_access_options_validate()
+ *   @see taxonomy_access_autocomplete_validate()
+ *
+ * @todo
+ *   Use field label and term names in errors rather than field name and tids.
+ *
+ * @see
+ *   http://drupal.org/node/1220212
+ * @see
+ *   entity_form_field_validate()
+ */
+ function taxonomy_access_field_attach_validate($entity_type, $entity, &$errors) {
+   // Check for a pre-existing entity (i.e., the entity is being updated).
+   $old_fields = FALSE;
+
+   // The entity is actually a "pseudo-entity," and the user profile form
+   // neglects to include the uid.  So, load it.
+   if ($entity_type == 'user') {
+     if ($account = user_load_by_name($entity->name)) {
+       $entity->uid = $account->uid;
+     }
+   }
+   list($entity_id, , $bundle) = entity_extract_ids($entity_type, $entity);
+   if ($entity_id) {
+     // Load the entity.
+     $old_entity = entity_load($entity_type, array($entity_id));
+     $old_entity = $old_entity[$entity_id];
+
+     // Fetch the original entity's taxonomy fields.
+     $old_fields =
+       _taxonomy_access_entity_fields($entity_type, $old_entity, $bundle);
+   }
+
+   // Fetch the updated entity's taxonomy fields.
+   $new_fields =
+     _taxonomy_access_entity_fields($entity_type, $entity, $bundle);
+
+   // Set errors if there are any disallowed changes.
+   $changes = _taxonomy_access_compare_fields($new_fields, $old_fields);
+
+   // We care about the overall value list, so delta is not important.
+   $delta = 0;
+
+   // Check each field and langcode for disallowed changes.
+   foreach ($changes as $field_name => $langcodes) {
+     foreach ($langcodes as $langcode => $disallowed) {
+       if ($disallowed) {
+         if (!empty($disallowed['added'])) {
+           $text = 'You may not add the following tags to %field: %tids';
+           $errors[$field_name][$langcode][$delta][] = array(
+             'error' => 'taxonomy_access_disallowed_added',
+             'message' => t($text, array(
+                          '%field' => $field_name,
+                          '%tids' => implode(', ', $disallowed['added']),
+                        )),
+           );
+         }
+         if (!empty($disallowed['removed'])) {
+           $text = 'You may not remove the following tags from %field: %tids';
+           $errors[$field_name][$langcode][$delta][] = array(
+             'error' => 'taxonomy_access_disallowed_removed',
+             'message' => t($text, array(
+                          '%field' => $field_name,
+                          '%tids' => implode(', ', $disallowed['removed']),
+                        )),
+           );
+         }
+       }
+     }
+   }
+ }
+
+/**
+ * Implements hook_query_TAG_alter() for 'term_access'.
+ *
+ * Provides sitewide list grant filtering, as well as create grant filtering
+ * for autocomplete paths.
+ *
+ * @todo
+ *   Fix create permission filtering for autocomplete paths.
+ */
+function taxonomy_access_query_term_access_alter($query) {
+
+  // Take no action while the list op is disabled.
+  if (!taxonomy_access_list_enabled()) {
+    return;
+  }
+
+  // Take no action if there is no term table in the query.
+  $alias = '';
+  $tables =& $query->getTables();
+  foreach ($tables as $i => $table) {
+    if (strpos($table['table'], 'taxonomy_term_') === 0) {
+      $alias = $table['alias'];
+    }
+  }
+  if (empty($alias)) {
+    return;
+  }
+
+  // Fetch a list of all terms the user may list.
+  $tids = taxonomy_access_user_list_terms();
+
+  // If exactly TRUE was returned, the user can list all terms.
+  if ($tids === TRUE) {
+    return;
+  }
+
+  // If the user cannot list any terms, then allow only null values.
+  if (empty($tids)) {
+    $query->isNull($alias . ".tid");
+  }
+
+  // Otherwise, filter to the terms provided.
+  else {
+    $query->condition($alias . ".tid", $tids, "IN");
+  }
+}
+
+/**
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
+ *
+ * This implements the create grant for autocomplete fields:
+ * 1. Denies access if the user cannot alter the field values.
+ * 2. Determines whether the user can autocreate new terms for the field.
+ * 3. Removes default values disallowed by create.
+ * 4. Adds (2) and (3) to the element so they are available to the validator.
+ * 5. Adds the custom validator.
+ * 6. Sets a custom autocomplete path to filter autocomplete by create.
+ *
+ * Some of the logic here is borrowed from taxonomy_autocomplete_validate().
+ */
+function taxonomy_access_field_widget_taxonomy_autocomplete_form_alter(&$element, &$form_state, $context) {
+
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list();
+
+  // Collect a list of terms and filter out those disallowed by create.
+  $filtered = array();
+  foreach ($context['items'] as $item) {
+    $filtered[$item['tid']] = $item;
+  }
+  $disallowed_defaults = taxonomy_access_create_disallowed(array_keys($filtered));
+  foreach ($disallowed_defaults as $tid) {
+    unset($filtered[$tid]);
+  }
+
+  // Assemble a list of all vocabularies for the field.
+  $vids = array();
+  foreach ($context['field']['settings']['allowed_values'] as $tree) {
+    if ($vocab = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
+      $vids[] = $vocab->vid;
+    }
+  }
+
+  // Determine whether the user has create for any terms in the given vocabs.
+  $allowed_terms = FALSE;
+  foreach ($vids as $vid) {
+    $terms = taxonomy_access_user_create_terms_by_vocab($vid);
+    if (!empty($terms)) {
+      $allowed_terms = TRUE;
+      break;
+    }
+  }
+
+  // Filter the vids to vocabs in which the user may create new terms.
+  $allowed_vids = taxonomy_access_create_default_allowed($vids);
+
+  // If the field already has the maximum number of values, and all of these
+  // values are disallowed, deny access to the field.
+  if ($context['field']['cardinality'] != FIELD_CARDINALITY_UNLIMITED) {
+    if (sizeof($disallowed_defaults) >= $context['field']['cardinality']) {
+      $element['#access'] = FALSE;
+    }
+  }
+
+  // If the user may not create any terms on this field, deny access.
+  if (empty($allowed_vids) && !$allowed_terms) {
+    $element['#access'] = FALSE;
+  }
+
+  // Set the default value from the filtered item list.
+  $element['#default_value'] =
+    taxonomy_access_autocomplete_default_value($filtered);
+
+  // Custom validation.  Set values for the validator indicating:
+  // 1. Whether the user can autocreate terms in this field (vocab. default).
+  // 2. Which tids were removed due to create restrictions.
+  $element['#allow_autocreate'] = empty($allowed_vids) ? FALSE : TRUE;
+  $element['#disallowed_defaults'] = $disallowed_defaults;
+  $element['#element_validate'] =
+    array('taxonomy_access_autocomplete_validate');
+
+  // Use a custom autocomplete path to filter by create rather than list.
+  $element['#autocomplete_path'] =
+    'taxonomy_access/autocomplete/' . $context['field']['field_name'];
+
+  unset($context);
+
+  // Re-enable list grants.
+  taxonomy_access_enable_list();
+}
+
+/**
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
+ *
+ * This implements the create grant for select widgets.
+ *
+ * @see
+ *   _taxonomy_access_configure_options_widget()
+ */
+function taxonomy_access_field_widget_options_select_form_alter(&$element, &$form_state, $context) {
+  // Only act on taxonomy fields.
+  if ($context['field']['type'] != 'taxonomy_term_reference') {
+    return;
+  }
+  _taxonomy_access_configure_options_widget($element, $context['field']['cardinality']);
+}
+
+/**
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter().
+ *
+ * This implements the create grant for checkbox/radio widgets.
+ *
+ * @see
+ *   _taxonomy_access_configure_options_widget()
+ */
+function taxonomy_access_field_widget_options_buttons_form_alter(&$element, &$form_state, $context) {
+  // Only act on taxonomy fields.
+  if ($context['field']['type'] != 'taxonomy_term_reference') {
+    return;
+  }
+  _taxonomy_access_configure_options_widget($element, $context['field']['cardinality']);
+}
+
+
+
+/*****************************************************************************/
+/*********************** NODE ACCESS UPDATE MECHANISM ************************/
+/*****************************************************************************/
+
+
+/**
+ * Registered shutdown function: perform any needed node access updates.
+ *
+ * @see
+ *   taxonomy_access_init()
+ */
+function taxonomy_access_shutdown() {
+  // Update any affected nodes.
+  $affected_nodes = taxonomy_access_affected_nodes();
+  if (!empty($affected_nodes)) {
+    taxonomy_access_affected_nodes(NULL, TRUE);
+    _taxonomy_access_node_access_update($affected_nodes);
+  }
+}
+
+/**
+ * Flags node access for rebuild with a message for administrators.
+ */
+function _taxonomy_access_flag_rebuild() {
+  drupal_set_message(t("Taxonomy Access Control is updating node access... If you see a message that content access permissions need to be rebuilt, you may wait until after you have completed your configuration changes."), 'status');
+  node_access_needs_rebuild(TRUE);
+}
+
+
+/**
+ * Updates node access grants for a set of nodes.
+ *
+ * @param array $nids
+ *    An array of node IDs for which to acquire access permissions.
+ *
+ * @todo
+ *   Unset rebuild message when we set the flag to false?
+ */
+function _taxonomy_access_node_access_update(array $nids) {
+  // Proceed only if node_access_needs_rebuild() is not already flagged.
+  if (!node_access_needs_rebuild()) {
+
+    // Set node_access_needs_rebuild() until we succeed below.
+    _taxonomy_access_flag_rebuild();
+
+    // Remove any duplicate nids from the array.
+    $nids = array_unique($nids);
+
+    // If the number of nodes is small enough, update node access for each.
+    if (sizeof($nids) < TAXONOMY_ACCESS_MAX_UPDATE) {
+      foreach ($nids as $node) {
+        $loaded_node = node_load($node, NULL, TRUE);
+        if (!empty($loaded_node)) {
+          node_access_acquire_grants($loaded_node);
+        }
+      }
+
+      // If we make it here our update was successful; unflag rebuild.
+      node_access_needs_rebuild(FALSE);
+    }
+  }
+  return TRUE;
+}
+
+/**
+ * Cache and retrieve nodes affected by a taxonomy change.
+ *
+ * @param array $affected_nodes
+ *   (optional) If we are caching, the list of nids to cache.
+ *   Defaults to NULL.
+ * @param $reset
+ *   (optional) Flag to manually reset the list.  Defaults to FALSE.
+ *
+ * @return
+ *   The cached list of nodes.
+ */
+function taxonomy_access_affected_nodes(array $affected_nodes = NULL, $reset = FALSE) {
+  static $nodes = array();
+
+  // If node_access_needs_rebuild or $reset are set, reset list and return.
+  if (node_access_needs_rebuild() || $reset) {
+    $nodes = array();
+    return;
+  }
+
+  // If we were passed a list of nodes, cache.
+  if (isset($affected_nodes)) {
+    $nodes = array_unique(array_merge($nodes, $affected_nodes));
+
+    // Stop caching if there are more nodes than the limit.
+    if (sizeof($nodes) >= TAXONOMY_ACCESS_MAX_UPDATE) {
+      _taxonomy_access_flag_rebuild();
+      unset($nodes);
+    }
+  }
+
+  // Otherwise, return the cached data.
+  else {
+    return $nodes;
+  }
+}
+
+/**
+ * Gets node IDs with controlled terms or vocabs for any of the given roles.
+ *
+ * @param $rid
+ *    A single role ID.
+ *
+ * @return
+ *    An array of node IDs associated with terms or vocabularies that are
+ *    controlled for the role.
+ */
+function _taxonomy_access_get_controlled_nodes_for_role($rid) {
+  $query = db_select('taxonomy_index', 'ti')
+    ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node');
+  $query->leftJoin('taxonomy_term_data', 'td', 'ti.tid = td.tid');
+  $query->leftJoin('taxonomy_access_term', 'ta', 'ti.tid = ta.tid');
+  $query->leftJoin('taxonomy_access_default', 'tad', 'tad.vid = td.vid');
+
+  // The query builder will automatically use = or IN() as appropriate.
+  $query->condition(
+    db_or()
+    ->condition('ta.rid', $rid)
+    ->condition('tad.rid', $rid)
+  );
+
+  $nids = $query->execute()->fetchCol();
+  return $nids;
+}
+
+/**
+ * Gets node IDs associated with the roles' global defaults.
+ *
+ * @param $rid
+ *   A single role ID.
+ *
+ * @return
+ *    An array of node IDs associated with the global default.
+ */
+function _taxonomy_access_get_nodes_for_global_default($rid) {
+  // Two kinds of nodes are governed by the global default:
+  // 1. Nodes with terms controlled neither directly nor by vocab. defaults,
+  // 2. Nodes with no terms.
+
+  // Get a list of all terms controlled for the role, either directly or
+  // by a vocabulary default.
+  $tids = _taxonomy_access_global_controlled_terms($rid);
+
+  $query =
+    db_select('node', 'n')
+    ->fields('n', array('nid'))
+    ->addTag('taxonomy_access_node')
+    ;
+
+  // With a left join, the term ID for untagged nodes will be NULL.
+  if (!empty($tids)) {
+    $query->leftJoin('taxonomy_index', 'ti', 'ti.nid = n.nid');
+    $query->condition(
+      db_or()
+      ->condition('ti.tid', $tids, 'NOT IN')
+      ->condition('ti.tid', NULL)
+    );
+  }
+
+  $nids = $query->execute()->fetchCol();
+
+  return $nids;
+}
+
+/**
+ * Gets node IDs associated with a given vocabulary.
+ *
+ * @param $vocab_ids
+ *    A single vocabulary ID or an array of IDs.
+ * @param $rid.
+ *    (optional) A single role ID.
+ *    This argument has the effect of filtering out nodes in terms that
+ *    are already controlled invidually for the role.  Defaults to NULL.
+ *
+ * @return
+ *    An array of node IDs associated with the given vocabulary.
+ */
+function _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid = NULL) {
+  // Accept either a single vocabulary ID or an array thereof.
+  if (is_numeric($vocab_ids)) {
+    $vocab_ids = array($vocab_ids);
+  }
+  if (empty($vocab_ids)) {
+    return FALSE;
+  }
+
+  // If a role was passed, get terms controlled for that role.
+  if (!empty($rid)) {
+    $tids = _taxonomy_access_vocab_controlled_terms($vocab_ids, $rid);
+  }
+
+  $query =
+    db_select('taxonomy_index', 'ti')
+    ->condition('td.vid', $vocab_ids)
+    ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node');
+    ;
+  $query->join('taxonomy_term_data', 'td', 'td.tid = ti.tid');
+
+  // Exclude records with controlled terms from the results.
+  if (!empty($tids)) {
+    $query->condition('ti.tid', $tids, 'NOT IN');
+  }
+
+  $nids = $query->execute()->fetchCol();
+  unset($tids);
+  unset($query);
+
+  // If the global default is in the list, fetch those nodes as well.
+  if (in_array(0, $vocab_ids)) {
+    $nids =
+      array_merge($nids, _taxonomy_access_get_nodes_for_global_default($rid));
+  }
+
+  return $nids;
+}
+
+function _taxonomy_access_global_controlled_terms($rid) {
+  $tids =
+    db_query(
+      "SELECT td.tid
+       FROM {taxonomy_term_data} td
+       LEFT JOIN {taxonomy_access_term} ta ON td.tid = ta.tid
+       LEFT JOIN {taxonomy_access_default} tad ON td.vid = tad.vid
+       WHERE ta.rid = :rid OR tad.rid = :rid",
+      array(':rid' => $rid)
+    )
+    ->fetchCol();
+
+  return $tids;
+}
+
+function _taxonomy_access_vocab_controlled_terms($vids, $rid) {
+  // Accept either a single vocabulary ID or an array thereof.
+  if (is_numeric($vids)) {
+    $vids = array($vids);
+  }
+
+  $tids =
+    db_query(
+      "SELECT td.tid
+       FROM {taxonomy_term_data} td
+       INNER JOIN {taxonomy_access_term} ta ON td.tid = ta.tid
+       WHERE ta.rid = :rid
+       AND td.vid IN (:vids)",
+      array(':rid' => $rid, ':vids' => $vids)
+    )
+    ->fetchCol();
+
+  return $tids;
+}
+
+/**
+ * Gets node IDs associated with a given term.
+ *
+ * @param $term_ids
+ *   A single term ID or an array of term IDs.
+ *
+ * @return
+ *    An array of node IDs associated with the given terms.
+ */
+function _taxonomy_access_get_nodes_for_terms($term_ids) {
+  if (empty($term_ids)) {
+    return FALSE;
+  }
+
+  // The query builder will use = or IN() automatically as appropriate.
+  $nids =
+    db_select('taxonomy_index', 'ti')
+    ->condition('ti.tid', $term_ids)
+    ->fields('ti', array('nid'))
+    ->addTag('taxonomy_access_node')
+    ->execute()
+    ->fetchCol();
+
+  unset($term_ids);
+
+  return $nids;
+}
+
+/**
+ * Get term IDs for all descendants of the given term.
+ *
+ * @param $tid
+ *    The term ID for which to fetch children.
+ *
+ * @return
+ *    An array of the IDs of the term's descendants.
+ */
+function _taxonomy_access_get_descendants($tid) {
+  static $descendants = array();
+
+  if (!isset($descendants[$tid])) {
+    // Preserve the original state of the list flag.
+    $flag_state = taxonomy_access_list_enabled();
+
+    // Enforce that list grants do not filter the results.
+    taxonomy_access_disable_list();
+
+    $descendants[$tid] = array();
+    $term = taxonomy_term_load($tid);
+    $tree = taxonomy_get_tree($term->vid, $tid);
+
+    foreach ($tree as $term) {
+      $descendants[$tid][] = $term->tid;
+    }
+
+    // Restore list flag to previous state.
+    if ($flag_state) {
+      taxonomy_access_enable_list();
+    }
+
+    unset($term);
+    unset($tree);
+  }
+
+  return $descendants[$tid];
+}
+
+/**
+ * Get term IDs for all terms in the vocabulary
+ *
+ * @param $vocab_id
+ *    The vocabulary ID for which to fetch children.
+ *
+ * @return
+ *    An array of the IDs of the terms in in the vocabulary.
+ */
+function _taxonomy_access_get_vocabulary_terms($vocab_id) {
+  static $descendants = array();
+
+  if (!isset($descendants[$vocab_id])) {
+    // Preserve the original state of the list flag.
+    $flag_state = taxonomy_access_list_enabled();
+
+    // Enforce that list grants do not filter the results.
+    taxonomy_access_disable_list();
+
+    $descendants[$vocab_id] = array();
+    $tree = taxonomy_get_tree($vocab_id);
+
+    foreach ($tree as $term) {
+      $descendants[$vocab_id][] = $term->tid;
+    }
+
+    // Restore list flag to previous state.
+    if ($flag_state) {
+      taxonomy_access_enable_list();
+    }
+
+    unset($term);
+    unset($tree);
+  }
+
+  return $descendants[$vocab_id];
+}
+
+
+
+
+/*****************************************************************************/
+/******************************* DELETION API ********************************/
+/*****************************************************************************/
+
+
+/**
+ * Delete module configurations for the given role IDs.
+ *
+ * @param $rid
+ *   A single role ID.
+ * @param $update_nodes
+ *   (optional) A flag to determine whether nodes should be queued for update.
+ *   Defaults to TRUE.
+ */
+function taxonomy_access_delete_role_grants($rid, $update_nodes = TRUE) {
+  if (empty($rid)) {
+    return FALSE;
+  }
+  if ($rid == DRUPAL_ANONYMOUS_RID || $rid == DRUPAL_AUTHENTICATED_RID) {
+    return FALSE;
+  }
+
+  if ($update_nodes) {
+    // Cache the list of nodes that will be affected by this change.
+
+    // Affected nodes will be those tied to configurations that are more
+    // permissive than those from the authenticated user role.
+
+    // If any global defaults are more permissive, we need to update all nodes.
+    // Fetch global defaults.
+    $global_defaults = taxonomy_access_global_defaults();
+
+    // Find the ones we need.
+    foreach ($global_defaults as $gd) {
+      if ($gd['gid'] == DRUPAL_AUTHENTICATED_RID) {
+        $auth_gd = $gd;
+      }
+      elseif ($gd['gid'] == $rid) {
+        $role_gd = $gd;
+      }
+    }
+
+    // Check node grants for the global default.
+    // If any is more permissive, flag that we need to update all nodes.
+    $all_nodes = FALSE;
+    foreach (array('grant_view', 'grant_update', 'grant_delete') as $op) {
+      switch ($auth_gd[$op]) {
+        // If the authenticated user has a Deny grant, then either Allow or
+        // Ignore for the role is more permissive.
+        case 2:
+          if ($role_gd[$op] < 2) {
+            $all_nodes = TRUE;
+          }
+          break 2;
+
+        // If the authenticated user has Ignore, Allow is more permissive.
+        case 0:
+          if ($role_gd[$op] == 1) {
+            $all_nodes = TRUE;
+          }
+          break 2;
+      }
+    }
+
+    // If flagged, add all nodes to the affected nodes cache.
+    if ($all_nodes) {
+      $affected_nodes = db_query('SELECT nid FROM {node}')->fetchCol();
+    }
+
+    // Otherwise, just get nodes controlled by specific configurations.
+    else {
+      $affected_nodes =
+        _taxonomy_access_get_controlled_nodes_for_role($rid);
+    }
+    taxonomy_access_affected_nodes($affected_nodes);
+
+    unset($affected_nodes);
+  }
+
+  db_delete('taxonomy_access_term')
+    ->condition('rid', $rid)
+    ->execute();
+
+  db_delete('taxonomy_access_default')
+    ->condition('rid', $rid)
+    ->execute();
+}
+
+/**
+ * Delete module configurations for the given vocabulary IDs.
+ *
+ * @param $vocab_ids
+ *   A single vocabulary ID or an array of vocabulary IDs.
+ * @param $rid
+ *   (optional) A single role ID.  Defaults to NULL.
+ * @param $update_nodes
+ *   (optional) A flag to determine whether nodes should be queued for update.
+ *   Defaults to TRUE.
+ */
+function taxonomy_access_delete_default_grants($vocab_ids, $rid = NULL, $update_nodes = TRUE) {
+  // Accept either a single vocabulary ID or an array thereof.
+  if ($vocab_ids !== 0 && empty($vocab_ids)) {
+    return FALSE;
+  }
+
+  if ($update_nodes) {
+    // Cache the list of nodes that will be affected by this change.
+    $affected_nodes =
+      _taxonomy_access_get_nodes_for_defaults($vocab_ids, $rid);
+    taxonomy_access_affected_nodes($affected_nodes);
+    unset($affected_nodes);
+  }
+
+  // The query builder will use = or IN() automatically as appropriate.
+  $query =
+    db_delete('taxonomy_access_default')
+    ->condition('vid', $vocab_ids);
+
+  if (!empty($rid)) {
+    $query->condition('rid', $rid);
+  }
+
+  $query->execute();
+
+  unset($query);
+}
+
+/**
+ * Delete module configurations for the given term IDs.
+ *
+ * @param $term_ids
+ *   A single term ID or an array of term IDs.
+ * @param $rid
+ *   (optional) A single role ID.  Defaults to NULL.
+ * @param $update_nodes
+ *   (optional) A flag to determine whether nodes should be queued for update.
+ *   Defaults to TRUE.
+ */
+function taxonomy_access_delete_term_grants($term_ids, $rid = NULL, $update_nodes = TRUE) {
+  // Accept either a single term ID or an array thereof.
+  if (is_numeric($term_ids)) {
+    $term_ids = array($term_ids);
+  }
+
+  if (empty($term_ids)) {
+    return FALSE;
+  }
+
+  if ($update_nodes) {
+    // Cache the list of nodes that will be affected by this change.
+    $affected_nodes = _taxonomy_access_get_nodes_for_terms($term_ids);
+    taxonomy_access_affected_nodes($affected_nodes);
+    unset($affected_nodes);
+  }
+
+  // Delete our database records for these terms.
+  $query =
+    db_delete('taxonomy_access_term')
+    ->condition('tid', $term_ids);
+
+  if (!empty($rid)) {
+    $query->condition('rid', $rid);
+  }
+
+  $query->execute();
+
+  unset($term_ids);
+  unset($query);
+}
+
+
+
+
+/*****************************************************************************/
+/******************************** UPDATE API *********************************/
+/*****************************************************************************/
+
+
+/**
+ * Formats a record to be written to the module's configuration tables.
+ *
+ * @param $id
+ *   The term or vocabulary ID.
+ * @param $rid
+ *   The role ID.
+ * @param $grants
+ *   An array of grants to write, in the format grant_name => value.
+ *   Allowed keys: 'view', 'update', 'delete', 'create', 'list'
+ * @param $default
+ *   (optional) Whether this is a term record (FALSE) or default record (TRUE).
+ *   Defaults to FALSE.
+ *
+ * @return
+ *   A grant row object formatted for Schema API.
+ */
+function _taxonomy_access_format_grant_record($id, $rid, array $grants, $default = FALSE) {
+  $row = new stdClass();
+  if ($default) {
+    $row->vid = $id;
+  }
+  else {
+    $row->tid = $id;
+  }
+  $row->rid = $rid;
+  foreach ($grants as $op => $value) {
+    if (is_numeric($value)) {
+      $grant_name = "grant_$op";
+      $row->$grant_name = $value;
+    }
+  }
+
+  return $row;
+}
+
+/**
+ * Updates term grants for a role.
+ *
+ * @param (array) $grant_rows
+ *   An array of grant row objects formatted for Schema API, keyed by term ID.
+ * @param $update_nodes
+ *   (optional) A flag indicating whether to update node access.
+ *   Defaults to TRUE.
+ *
+ * @see
+ *   _taxonomy_access_format_grant_record()
+ */
+function taxonomy_access_set_term_grants(array $grant_rows, $update_nodes = TRUE) {
+  // Collect lists of term and role IDs in the list.
+  $terms_for_roles = array();
+  foreach ($grant_rows as $grant_row) {
+    $terms_for_roles[$grant_row->rid][] = $grant_row->tid;
+  }
+
+  // Delete existing records for the roles and terms.
+  // This will also cache a list of the affected nodes.
+  foreach ($terms_for_roles as $rid => $tids) {
+    taxonomy_access_delete_term_grants($tids, $rid, $update_nodes);
+  }
+
+  // Insert new entries.
+  foreach ($grant_rows as $row) {
+    drupal_write_record('taxonomy_access_term', $row);
+  }
+}
+
+/**
+ * Updates vocabulary default grants for a role.
+ *
+ * @param $rid
+ *   The role ID to add the permission for.
+ * @param (array) $grant_rows
+ *   An array of grant rows formatted for Schema API, keyed by vocabulary ID.
+ * @param $update_nodes
+ *   (optional) A flag indicating whether to update node access.
+ *   Defaults to TRUE.
+ *
+ * @see
+ *   _taxonomy_access_format_grant_record()
+ */
+function taxonomy_access_set_default_grants(array $grant_rows, $update_nodes = TRUE) {
+  // Collect lists of term and role IDs in the list.
+  $vocabs_for_roles = array();
+  foreach ($grant_rows as $grant_row) {
+    $vocabs_for_roles[$grant_row->rid][] = $grant_row->vid;
+  }
+
+  // Delete existing records for the roles and vocabularies.
+  // This will also cache a list of the affected nodes.
+  foreach ($vocabs_for_roles as $rid => $vids) {
+    taxonomy_access_delete_default_grants($vids, $rid, $update_nodes);
+  }
+
+  // Insert new entries.
+  foreach ($grant_rows as $row) {
+    drupal_write_record('taxonomy_access_default', $row);
+  }
+}
+
+
+
+/*****************************************************************************/
+/******************************* NODE ACCESS *********************************/
+/*****************************************************************************/
+
+/**
+ * Builds a base query object for the specified TAC grants.
+ *
+ * Callers should add conditions, groupings, and optionally fields.
+ *
+ * This query should work on D7's supported versions of MySQL and PostgreSQL;
+ * patches may be needed for other databases. We add query tags to allow
+ * other systems to manipulate the query as needed.
+ *
+ * @param array $grants
+ *   Grants to select.
+ *   Allowed values: 'view', 'update', 'delete', 'create', 'list'
+ * @param $default
+ *   (optional) Flag to select default grants only.  Defaults to FALSE.
+ *
+ * @return
+ *    Query object.
+ */
+function _taxonomy_access_grant_query(array $grants, $default = FALSE) {
+  $table = $default ? 'taxonomy_vocabulary' : 'taxonomy_term_data';
+  $query =
+    db_select($table, 'td')
+    ->addTag('taxonomy_access')
+    ->addTag('taxonomy_access_grants')
+    ;
+
+  $query->join(
+    'taxonomy_access_default', 'tadg',
+    'tadg.vid = 0'
+  );
+  $query->leftJoin(
+    'taxonomy_access_default', 'tad',
+    'tad.vid = td.vid AND tad.rid = tadg.rid'
+  );
+  if (!$default) {
+    $query->leftJoin(
+      'taxonomy_access_term', 'ta',
+      'ta.tid = td.tid AND ta.rid = tadg.rid'
+    );
+  }
+
+  // We add grant fields this way to reduce the risk of future vulnerabilities.
+  $grant_fields = array(
+    'view' => 'grant_view',
+    'update' => 'grant_update',
+    'delete' => 'grant_delete',
+    'create' => 'grant_create',
+    'list' => 'grant_list',
+  );
+
+  foreach ($grant_fields as $name => $grant) {
+    if (in_array($name, $grants)) {
+      if ($default) {
+        $query->addExpression(
+          'BIT_OR(COALESCE('
+          . 'tad.' . db_escape_table($grant) . ', '
+          . 'tadg.' . db_escape_table($grant)
+          . '))',
+          $grant
+        );
+      }
+      else {
+        $query->addExpression(
+          'BIT_OR(COALESCE('
+          . 'ta.' . db_escape_table($grant) . ', '
+          . 'tad.' . db_escape_table($grant) . ', '
+          . 'tadg.' . db_escape_table($grant)
+          . '))',
+          $grant
+        );
+      }
+    }
+  }
+
+  return $query;
+}
+
+/**
+ * Calculates node access grants by role for the given node ID.
+ *
+ * @param $node_nid
+ *   The node ID for which to calculate grants.
+ * @param $reset
+ *   (optional) Whether to recalculate the cached values.  Defaults to FALSE.
+ *
+ * @return
+ *    Array formatted for hook_node_access_records().
+ */
+function _taxonomy_access_node_access_records($node_nid, $reset = FALSE) {
+
+  // Build the base node grant query.
+  $query = _taxonomy_access_grant_query(array('view', 'update', 'delete'));
+
+  // Select grants for this node only and group by role.
+  $query->join(
+    'taxonomy_index', 'ti',
+    'td.tid = ti.tid'
+  );
+  $query
+    ->fields('tadg', array('rid'))
+    ->condition('ti.nid', $node_nid)
+    ->groupBy('tadg.rid')
+    ->addTag('taxonomy_access_node_access')
+    ->addTag('taxonomy_access_node')
+    ;
+
+  // Fetch and format all grant records for the node.
+  $grants = array();
+  $records = $query->execute()->fetchAll();
+  foreach ($records as $record) {
+    $grants[] = _taxonomy_access_format_node_access_record($record);
+  }
+
+  unset($records);
+  unset($record);
+  unset($query);
+
+  // The node grant query returns no rows if the node has no tags.
+  // In that scenario, use the global default.
+  if (sizeof($grants) == 0) {
+    $grants = taxonomy_access_global_defaults($reset);
+  }
+
+  return $grants;
+}
+
+/**
+ * Returns an array of global default grants for all roles.
+ *
+ * @param $reset
+ *   (optional) Whether to recalculate the cached values.  Defaults to FALSE.
+ * @return
+ *   Global default grants, formatted for hook_node_access_records().
+ */
+function taxonomy_access_global_defaults($reset = FALSE) {
+  static $global_grants;
+  if (empty($global_grants) || $reset) {
+    $global_grants = array();
+    $records =
+      db_query(
+        'SELECT rid, grant_view, grant_update, grant_delete
+         FROM {taxonomy_access_default}
+         WHERE vid = 0'
+      )
+      ->fetchAll();
+    foreach ($records as $record) {
+      $global_grants[] = _taxonomy_access_format_node_access_record($record);
+    }
+    unset($records);
+    unset($record);
+  }
+  return $global_grants;
+}
+
+/**
+ * Formats a row for hook_node_access_records.
+ *
+ * @param stdClass $record
+ *   The term record object from a TAC query to format.
+ *
+ * @return
+ *   An array formatted for hook_node_access_records().
+ *
+ * @todo
+ *   Make priority configurable?
+ */
+function _taxonomy_access_format_node_access_record(stdClass $record) {
+
+  // Ignore => 0, Allow => 1, Deny => 2 ('10' in binary).
+  // Only a value of 1 is considered an 'Allow';
+  // with an 'Allow' and no 'Deny', the value from the BIT_OR will be 1.
+  // If a 'Deny' is present, the value will then be 3 ('11' in binary).
+  return array(
+    'realm' => 'taxonomy_access_role',
+    'gid' => $record->rid,
+    'grant_view' => ($record->grant_view == 1) ? 1 : 0,
+    'grant_update' => ($record->grant_update == 1) ? 1 : 0,
+    'grant_delete' => ($record->grant_delete == 1) ? 1 : 0,
+    'priority' => 0,
+  );
+}
+
+
+
+
+
+/*****************************************************************************/
+/******************************* TERM ACCESS *********************************/
+/*****************************************************************************/
+
+
+/**
+ * Flag to disable list grant filtering (e.g., on node edit forms).
+ *
+ * @param $set_flag
+ *   (optional) When passed, sets the the flag.  Pass either TRUE or FALSE.
+ *   Defaults to NULL.
+ */
+function _taxonomy_access_list_state($set_flag = NULL) {
+  static $flag = TRUE;
+  // If no flag was passed, return the current state of the flag.
+  if (is_null($set_flag)) {
+    return $flag;
+  }
+  // If we were passed anything but null, set the flag.
+  $flag = $set_flag ? TRUE : FALSE;
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to enable list grant filtering.
+ *
+ * @see
+ *   taxonomy_access_list_state()
+ */
+function taxonomy_access_enable_list() {
+  _taxonomy_access_list_state(TRUE);
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to disable list grant filtering.
+ *
+ * @see
+ *   _taxonomy_access_list_state()
+ */
+function taxonomy_access_disable_list() {
+  _taxonomy_access_list_state(FALSE);
+}
+
+/**
+ * Wrapper for taxonomy_access_list_state() to check list grant filtering.
+ *
+ * @see
+ *   _taxonomy_access_list_state()
+ */
+function taxonomy_access_list_enabled() {
+  return _taxonomy_access_list_state();
+}
+
+/**
+ * Retrieve terms that the current user may list.
+ *
+ * @see
+ *    _taxonomy_access_user_term_grants()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may list all terms.
+ */
+function taxonomy_access_user_list_terms() {
+  // Cache the terms the current user can list.
+  static $terms = NULL;
+  if (is_null($terms)) {
+    $terms = _taxonomy_access_user_term_grants(FALSE);
+  }
+  return $terms;
+}
+
+/**
+ * Retrieve terms that the current user may create.
+ *
+ * @see
+ *   taxonomy_access_user_create_terms_by_vocab()
+ * @see
+ *    _taxonomy_access_user_term_grants()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may create all terms.
+ */
+function taxonomy_access_user_create_terms() {
+  // Cache the terms the current user can create.
+  static $terms = NULL;
+  if (is_null($terms)) {
+    $terms = _taxonomy_access_user_term_grants(TRUE);
+  }
+  return $terms;
+}
+
+/**
+ * Retrieve terms that the current user may create in specific vocabularies.
+ *
+ * @param $vid
+ *   A vid to use as a filter.
+ *
+ * @see
+ *   taxonomy_access_user_create_terms()
+ * @see
+ *   _taxonomy_access_user_term_grants()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may create all terms.
+ */
+function taxonomy_access_user_create_terms_by_vocab($vid) {
+  // Cache the terms the current user can create per vocabulary.
+  static $terms = array();
+  if (!isset($terms[$vid])) {
+    $terms[$vid] = _taxonomy_access_user_term_grants(TRUE, array($vid));
+  }
+  return $terms[$vid];
+}
+
+/**
+ * Retrieve terms that the current user may create.
+ *
+ * @see
+ *    _taxonomy_access_create_defaults()
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user may create all terms.
+ */
+function taxonomy_access_user_create_defaults() {
+  // Cache the terms the current user can create.
+  static $vids = NULL;
+  if (is_null($vids)) {
+    $vids = _taxonomy_access_create_defaults();
+  }
+  return $vids;
+}
+
+/**
+ * Check a list of term IDs for terms the user may not create.
+ *
+ * @param array $tids
+ *   The array of term IDs.
+ *
+ * @return
+ *   An array of disallowed term IDs.
+ */
+function taxonomy_access_create_disallowed(array $tids) {
+  $all_allowed = taxonomy_access_user_create_terms();
+
+  // If the user's create grant info is exactly TRUE, no terms are disallowed.
+  if ($all_allowed === TRUE) {
+    return array();
+  }
+
+  return array_diff($tids, $all_allowed);
+}
+
+/**
+ * Filter a list of term IDs to terms the user may create.
+ *
+ * @param array $tids
+ *   The array of term IDs.
+ *
+ * @return
+ *   An array of disallowed term IDs.
+ */
+function taxonomy_access_create_allowed(array $tids) {
+  $all_allowed = taxonomy_access_user_create_terms();
+
+  // If the user's create grant info is exactly TRUE, all terms are allowed.
+  if ($all_allowed === TRUE) {
+    return $tids;
+  }
+
+  return array_intersect($tids, $all_allowed);
+}
+
+/**
+ * Filter a list of vocab IDs to those in which the user may create by default.
+ *
+ * @param array $vids
+ *   The array of vocabulary IDs.
+ *
+ * @return
+ *   An array of disallowed vocabulary IDs.
+ */
+function taxonomy_access_create_default_allowed(array $vids) {
+  $all_allowed = taxonomy_access_user_create_defaults();
+
+  // If the user's create grant info is exactly TRUE, all terms are allowed.
+  if ($all_allowed === TRUE) {
+    return $vids;
+  }
+
+  return array_intersect($vids, $all_allowed);
+}
+
+/**
+ * Retrieve terms that the current user may create or list.
+ *
+ * @param $create
+ *   (optional) Whether to fetch grants for create (TRUE) or list (FALSE).
+ *   Defaults to FALSE.
+ * @param array $vids
+ *   (optional) An array of vids to limit the query.  Defaults to array().
+ * @param $account
+ *   (optional) The account for which to retrieve grants.  If no account is
+ *   passed, the current user will be used.  Defaults to NULL.
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user has the grant for all terms.
+ */
+function _taxonomy_access_user_term_grants($create = FALSE, array $vids = array(), $account = NULL) {
+  $grant_type = $create ? 'create' : 'list';
+  $grant_field_name = 'grant_' . $grant_type;
+
+  // If no account was passed, default to current user.
+  if (is_null($account)) {
+    global $user;
+    $account = $user;
+  }
+
+  // If the user can administer taxonomy, return TRUE for a global grant.
+  if (user_access('administer taxonomy', $account)) {
+    return TRUE;
+  }
+
+  // Build a term grant query.
+  $query = _taxonomy_access_grant_query(array($grant_type));
+
+  // Select term grants for the user's roles.
+  $query
+    ->fields('td', array('tid'))
+    ->groupBy('td.tid')
+    ->condition('tadg.rid', array_keys($account->roles), 'IN')
+    ;
+
+  // Filter by the indicated vids, if any.
+  if (!empty($vids)) {
+    $query
+      ->fields('td', array('vid'))
+      ->condition('td.vid', $vids, 'IN')
+      ;
+  }
+
+  // Fetch term IDs.
+  $r = $query->execute()->fetchAll();
+  $tids = array();
+
+  // If there are results, initialize a flag to test whether the user
+  // has the grant for all terms.
+  $grants_for_all_terms = empty($r) ? FALSE : TRUE;
+
+  foreach ($r as $record) {
+    // If the user has the grant, add the term to the array.
+    if ($record->$grant_field_name) {
+      $tids[] = $record->tid;
+    }
+    // Otherwise, flag that the user does not have the grant for all terms.
+    else {
+      $grants_for_all_terms = FALSE;
+    }
+  }
+
+  // If the user has the grant for all terms, return TRUE for a global grant.
+  if ($grants_for_all_terms) {
+    return TRUE;
+  }
+
+  return $tids;
+}
+
+/**
+ * Retrieve vocabularies in which the current user may create terms.
+ *
+ * @param $account
+ *   (optional) The account for which to retrieve grants.  If no account is
+ *   passed, the current user will be used.  Defaults to NULL.
+ *
+ * @return
+ *   An array of term IDs, or TRUE if the user has the grant for all terms.
+ */
+function _taxonomy_access_create_defaults($account = NULL) {
+
+  // If the user can administer taxonomy, return TRUE for a global grant.
+  if (user_access('administer taxonomy', $account)) {
+    return TRUE;
+  }
+
+  // Build a term grant query.
+  $query = _taxonomy_access_grant_query(array('create'), TRUE);
+
+  // Select term grants for the current user's roles.
+  if (is_null($account)){
+    global $user;
+    $account = $user;
+  }
+  $query
+    ->fields('td', array('vid'))
+    ->groupBy('td.vid')
+    ->condition('tadg.rid', array_keys($account->roles), 'IN')
+    ;
+
+  // Fetch term IDs.
+  $r = $query->execute()->fetchAll();
+  $vids = array();
+
+  // If there are results, initialize a flag to test whether the user
+  // has the grant for all terms.
+  $grants_for_all_vocabs = empty($r) ? FALSE : TRUE;
+
+  foreach ($r as $record) {
+    // If the user has the grant, add the term to the array.
+    if ($record->grant_create) {
+      $vids[] = $record->vid;
+    }
+    // Otherwise, flag that the user does not have the grant for all terms.
+    else {
+      $grants_for_all_vocabs = FALSE;
+    }
+  }
+
+  // If the user has the grant for all terms, return TRUE for a global grant.
+  if ($grants_for_all_vocabs) {
+    return TRUE;
+  }
+
+  return $vids;
+}
+
+/**
+ * Field options callback to generate options unfiltered by list grants.
+ *
+ * @param $field
+ *   The field object.
+ *
+ * @return
+ *   Allowed terms from taxonomy_allowed_values().
+ *
+ * @see
+ *   taxonomy_allowed_values()
+ */
+function _taxonomy_access_term_options($field) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_list_enabled();
+
+  // Enforce that list grants do not filter the options list.
+  taxonomy_access_disable_list();
+
+  // Use taxonomy.module to generate the list of options.
+  $options = taxonomy_allowed_values($field);
+
+  // Restore list flag to previous state.
+  if ($flag_state) {
+    taxonomy_access_enable_list();
+  }
+
+  return $options;
+}
+
+
+/**
+ * Helper function for hook_field_widget_form_alter() on options widgets.
+ *
+ * This implements the create grant for options widgets:
+ * 1. Denies access if the user cannot alter the field values.
+ * 2. Attaches jQuery to disable values disallowed by create.
+ * 3. Adds the disallowed values from (2) to the element so they are available
+ *    to the custom validator.
+ * 4. Adds the custom validator.
+ *
+ * We use JQuery to disable the options because of FAPI limitations:
+ * @see
+ *   http://drupal.org/node/284917
+ * @see
+ *   http://drupal.org/node/342316
+ * @see
+ *   http://drupal.org/node/12089
+ */
+function _taxonomy_access_configure_options_widget(&$element, $field_size) {
+  // Enforce that list grants do not filter our queries.
+  taxonomy_access_disable_list();
+
+  // Collect a list of terms and determine which are allowed
+  $tids = array_keys($element['#options']);
+
+  // Ignore the "none" option if present.
+  $key = array_search('_none', $tids);
+  if ($key !== FALSE) {
+    unset($tids[$key]);
+  }
+
+  $allowed_tids = taxonomy_access_create_allowed($tids);
+  $disallowed_tids = taxonomy_access_create_disallowed($tids);
+
+  // If no options are allowed, deny access to the field.
+  if (empty($allowed_tids)) {
+    $element['#access'] = FALSE;
+  }
+
+  // If the field already has the maximum number of values, and all of these
+  // values are disallowed, deny access to the field.
+  $defaults =
+    is_array($element['#default_value'])
+    ? $element['#default_value']
+    : array($element['#default_value'])
+    ;
+
+  $disallowed_defaults =
+    array_intersect($defaults, $disallowed_tids);
+  if ($field_size != FIELD_CARDINALITY_UNLIMITED) {
+    if (sizeof($disallowed_defaults) >= $field_size) {
+      $element['#access'] = FALSE;
+    }
+  }
+
+  // If there are disallowed, terms, add CSS and JS for jQuery.
+  // We use jQuery because FAPI does not currently support attributes
+  // for individual options.
+  if (!empty($disallowed_tids)) {
+
+    // Add a css class to the field that we can use in jQuery.
+    $class_name = 'tac_' . $element['#field_name'];
+    $element['#attributes']['class'][] = $class_name;
+
+    // Add js for disabling create options.
+    $settings[] = array(
+      'field' => $class_name,
+      'disallowed_tids' => $disallowed_tids,
+      'disallowed_defaults' => $disallowed_defaults,
+    );
+    $element['#attached']['js'][] =
+      drupal_get_path('module', 'taxonomy_access') . '/tac_create.js';
+    $element['#attached']['js'][] = array(
+      'data' => array('taxonomy_access' => $settings),
+      'type' => 'setting',
+    );
+  }
+
+  $element['#disallowed_defaults'] = $disallowed_defaults;
+  $element['#element_validate'] = array('taxonomy_access_options_validate');
+
+  // Re-enable list grants.
+  taxonomy_access_enable_list();
+
+}
+
+/**
+ * Validation to process option sets, which may have some terms disabled.
+ *
+ * We use a property set in hook_field_widget_form_alter():
+ *  - $element['#disallowed_defaults']
+ *
+ * @see
+ *   options_field_widget_validate()
+ * @see
+ *   _taxonomy_access_configure_options_widget()
+ */
+function taxonomy_access_options_validate($element, &$form_state) {
+  // Enforce that list grants do not filter this or subsequent validation.
+  taxonomy_access_disable_list();
+
+  if ($element['#required'] && $element['#value'] == '_none') {
+    form_error($element, t('!name field is required.', array('!name' => $element['#title'])));
+  }
+
+  // Clone the element and add in disallowed defaults.
+  $el = $element;
+  if (!empty($element['#disallowed_defaults'])) {
+    if (empty($el['#value'])) {
+      $el['#value'] = $element['#disallowed_defaults'];
+    }
+    elseif (is_array($el['#value'])) {
+      $el['#value'] = array_unique(array_merge($el['#value'], $element['#disallowed_defaults']));
+    }
+    else {
+      $el['#value'] = array_unique(array_merge(array($el['#value']), $element['#disallowed_defaults']));
+    }
+  }
+
+  // Transpose selections from field => delta to delta => field, turning
+  // multiple selected options into multiple parent elements.
+  $items = _options_form_to_storage($el);
+
+  // Subsequent validation will be handled by hook_field_attach_validate().
+  // Set the value in the form.
+  form_set_value($element, $items, $form_state);
+}
+
+/**
+ * Autocomplete menu callback: filter allowed terms by create, not list.
+ *
+ * For now we essentially duplicate the code from taxonomy.module, because
+ * it calls drupal_json_output without providing the logic separately.
+ *
+ * @see
+ *   http://drupal.org/node/1169964
+ * @see
+ *   taxonomy_autocomplete()
+ */
+function taxonomy_access_autocomplete($field_name, $tags_typed = '') {
+  // Enforce that list grants do not filter the autocomplete.
+  taxonomy_access_disable_list();
+
+  $field = field_info_field($field_name);
+
+  // The user enters a comma-separated list of tags. We only autocomplete the last tag.
+  $tags_typed = drupal_explode_tags($tags_typed);
+  $tag_last = drupal_strtolower(array_pop($tags_typed));
+
+  $matches = array();
+  if ($tag_last != '') {
+
+    // Part of the criteria for the query come from the field's own settings.
+    $vids = array();
+    $vocabularies = taxonomy_vocabulary_get_names();
+    foreach ($field['settings']['allowed_values'] as $tree) {
+      $vids[] = $vocabularies[$tree['vocabulary']]->vid;
+    }
+
+    $query = db_select('taxonomy_term_data', 't');
+    $query->addTag('translatable');
+    $query->addTag('term_access');
+
+    // Do not select already entered terms.
+    if (!empty($tags_typed)) {
+      $query->condition('t.name', $tags_typed, 'NOT IN');
+    }
+    // Select rows that match by term name.
+    $tags_return = $query
+      ->fields('t', array('tid', 'name'))
+      ->condition('t.vid', $vids)
+      ->condition('t.name', '%' . db_like($tag_last) . '%', 'LIKE')
+      ->range(0, 10)
+      ->execute()
+      ->fetchAllKeyed();
+
+    // Unset suggestions disallowed by create grants.
+    $disallowed = taxonomy_access_create_disallowed(array_keys($tags_return));
+    foreach ($disallowed as $tid) {
+      unset($tags_return[$tid]);
+    }
+
+    $prefix = count($tags_typed) ? drupal_implode_tags($tags_typed) . ', ' : '';
+
+    $term_matches = array();
+    foreach ($tags_return as $tid => $name) {
+      $n = $name;
+      // Term names containing commas or quotes must be wrapped in quotes.
+      if (strpos($name, ',') !== FALSE || strpos($name, '"') !== FALSE) {
+        $n = '"' . str_replace('"', '""', $name) . '"';
+      }
+      $term_matches[$prefix . $n] = check_plain($name);
+    }
+  }
+
+  drupal_json_output($term_matches);
+}
+
+/**
+ * Autocomplete validation to process typed values.
+ *
+ * For now we essentially duplicate the code from taxonomy.module, because
+ * it calls form_set_value() without providing the logic separately.
+ *
+ * We use two properties set in hook_field_widget_form_alter():
+ *  - $element['#allow_autocreate']
+ *  - $element['#disallowed_defaults']
+ *
+ * @todo
+ *   Specify autocreate per vocabulary?
+ * @see
+ *   taxonomy_autocomplete_validate()
+ */
+function taxonomy_access_autocomplete_validate($element, &$form_state) {
+  // Enforce that list grants do not filter this or subsequent validation.
+  taxonomy_access_disable_list();
+
+  // Autocomplete widgets do not send their tids in the form, so we must detect
+  // them here and process them independently.
+  $value = array();
+  if ($tags = $element['#value']) {
+    // Collect candidate vocabularies.
+    $field = field_widget_field($element, $form_state);
+    $vocabularies = array();
+    foreach ($field['settings']['allowed_values'] as $tree) {
+      if ($vocabulary = taxonomy_vocabulary_machine_name_load($tree['vocabulary'])) {
+        $vocabularies[$vocabulary->vid] = $vocabulary;
+      }
+    }
+
+    // Translate term names into actual terms.
+    $typed_terms = drupal_explode_tags($tags);
+    foreach ($typed_terms as $typed_term) {
+      // See if the term exists in the chosen vocabulary and return the tid;
+      // otherwise, create a new 'autocreate' term for insert/update.
+      if ($possibilities = taxonomy_term_load_multiple(array(), array('name' => trim($typed_term), 'vid' => array_keys($vocabularies)))) {
+        $term = array_pop($possibilities);
+      }
+      // Only autocreate if the user has create for the vocab. default.
+      elseif ($element['#allow_autocreate']) {
+        $vocabulary = reset($vocabularies);
+        $term = array(
+          'tid' => 'autocreate',
+          'vid' => $vocabulary->vid,
+          'name' => $typed_term,
+          'vocabulary_machine_name' => $vocabulary->machine_name,
+        );
+      }
+      // If they cannot autocreate and this is a new term, set an error.
+      else {
+        form_error(
+          $element,
+          t('You may not create new tags in %name.',
+            array('%name' => t($element['#title']))
+           )
+        );
+      }
+      if ($term) {
+        $value[] = (array) $term;
+      }
+    }
+  }
+
+  // Add in the terms that were disallowed.
+  // taxonomy.module expects arrays, not objects.
+  $disallowed = taxonomy_term_load_multiple($element['#disallowed_defaults']);
+  foreach ($disallowed as $key => $term) {
+    $disallowed[$key] = (array) $term;
+  }
+  $value = array_merge($value, $disallowed);
+
+  // Subsequent validation will be handled by hook_field_attach_validate().
+  // Set the value in the form.
+  form_set_value($element, $value, $form_state);
+}
+
+/**
+ * Default value re-generation for autocomplete fields.
+ *
+ * @param array $items
+ *   An array of values from form build info, filtered by create grants.
+ *
+ * @return
+ *   Field default value.
+ *
+ * @see
+ *   taxonomy_field_widget_form()
+ */
+function taxonomy_access_autocomplete_default_value(array $items) {
+  // Preserve the original state of the list flag.
+  $flag_state = taxonomy_access_list_enabled();
+
+  // Enforce that list grants do not filter the options list.
+  taxonomy_access_disable_list();
+
+  // Assemble list of tags.
+  $tags = array();
+  foreach ($items as $item) {
+    $tags[$item['tid']] = isset($item['taxonomy_term']) ? $item['taxonomy_term'] : taxonomy_term_load($item['tid']);
+  }
+
+  // Assemble the default value using taxonomy.module.
+  $tags = taxonomy_implode_tags($tags);
+
+  // Restore list flag to previous state.
+  if ($flag_state) {
+    taxonomy_access_enable_list();
+  }
+
+  return $tags;
+}
+
+/**
+ * Helper function to extract the taxonomy fields from an entity.
+ *
+ * @param $entity
+ *   The entity object.
+ *
+ * @return
+ *   An associative array of field information, containing:
+ *   - field_list: A flat array of all this entity's taxonomy fields, with the
+ *     format $field_name => $field_name.
+ *   - langcodes: A flat array of all langcodes in this entity's fields, with
+ *     the format $langcode => $langcode.
+ *   - data: An associative array of non-empty fields:
+ *     - $field_name: An associative array keyed by langcode.
+ *       - $langcode: Array of field values for this field name and langcode.
+ *
+ * @see
+ *   http://drupal.org/node/1220168
+ */
+function _taxonomy_access_entity_fields($entity_type, $entity, $bundle) {
+  // Maintain separate lists of field names and langcodes for quick comparison.
+  $fields = array();
+  $fields['field_list'] = array();
+  $fields['langcodes'] = array();
+  $fields['data'] = array();
+
+  // If there is no entity, return the empty structure.
+  if (!$entity) {
+    return $fields;
+  }
+
+  // Get a list of possible fields for the bundle.
+  // The bundle does not contain the field type (see #122016), so our only use
+  // for it is the field names.
+  $possible = array_keys(field_info_instances($entity_type, $bundle));
+
+  // Sort through the entity for relevant field data.
+  foreach ($entity as $field_name => $field) {
+
+    // Only proceed if this element is a valid field for the bundle.
+    if (in_array($field_name, $possible, TRUE)) {
+
+      // Check whether each entity field is a taxonomy field.
+      $info = field_info_field($field_name);
+      if ($info['type'] == 'taxonomy_term_reference') {
+        foreach ($field as $langcode => $values) {
+
+          // Add non-empty fields to the lists.
+          if (!empty($values)) {
+            $fields['langcodes'][$langcode] = $langcode;
+            $fields['field_list'][$field_name] = $field_name;
+            $fields['data'][$field_name][$langcode] = $values;
+          }
+          unset($values);
+        }
+      }
+    }
+    unset($info);
+    unset($field);
+  }
+
+  unset($entity);
+
+  return $fields;
+}
+
+/**
+ * Helper function to compare field values and look for disallowed changes.
+ *
+ * @param $new
+ *   An associative array of the updated field information as returned by
+ *   _taxonomy_access_entity_fields().
+ * @param $old
+ *   (optional) An associative array of the original field information,
+ *   or FALSE if there is no original field data.  Defaults to FALSE.
+ *
+ * @return
+ *   An array of disallowed changes, with the structure:
+ *   - $field_name: An associative array keyed by langcode.
+ *     - $langcode: Disallowed changes for this field name and langcode,
+ *       or FALSE if none.
+ *       - 'added' => An array of added terms that are disallowed.
+ *       - 'removed' => An array of removed termss that are disallowed.
+ *
+ * @see
+ *   _taxonomy_access_entity_fields()
+ * @see
+ *   _taxonomy_access_disallowed_changes()
+ */
+function _taxonomy_access_compare_fields($new, $old = FALSE) {
+  $disallowed_changes = array();
+
+  // If there are no original fields, simply process new.
+  if (!$old) {
+    foreach ($new['data'] as $field_name => $langcodes) {
+      foreach ($langcodes as $langcode => $values) {
+        $changes = _taxonomy_access_disallowed_changes($values, array());
+        if ($changes) {
+          if (!isset($disallowed_changes[$field_name])) {
+            $disallowed_changes[$field_name] = array();
+          }
+          $disallowed_changes[$field_name][$langcode] = $changes;
+        }
+      }
+    }
+  }
+
+  // Otherwise, aggregate and compare field data.
+  else {
+    $all_fields = $new['field_list'] + $old['field_list'];
+    $all_langcodes = $new['langcodes'] + $old['langcodes'];
+
+    foreach ($all_fields as $field_name) {
+      foreach ($all_langcodes as $langcode) {
+        $new_values = array();
+        if (isset($new['field_list'][$field_name])
+          && isset($new['data'][$field_name][$langcode])) {
+          $new_values = $new['data'][$field_name][$langcode];
+        }
+        $old_values = array();
+        if (isset($old['field_list'][$field_name])
+          && isset($old['data'][$field_name][$langcode])) {
+          $old_values = $old['data'][$field_name][$langcode];
+        }
+        $changes = _taxonomy_access_disallowed_changes($new_values, $old_values);
+        if ($changes) {
+          if (!isset($disallowed_changes[$field_name])) {
+            $disallowed_changes[$field_name] = array();
+          }
+          $disallowed_changes[$field_name][$langcode] = $changes;
+        }
+      }
+    }
+  }
+
+  unset($old);
+  unset($new);
+  return $disallowed_changes;
+}
+
+/**
+ * Helper function to check for term reference changes disallowed by create.
+ *
+ * @param array $new_field
+ *   The entity or form values of the updated field.
+ * @param array $old_field
+ *   The entity or form values of the original field.
+ *
+ * @return
+ *   Returns FALSE if there are no disallowed changes.  Otherwise, an array:
+ *   - 'added' => An array of added terms that are disallowed.
+ *   - 'removed' => An array of removed termss that are disallowed.
+ */
+function _taxonomy_access_disallowed_changes(array $new_field, array $old_field) {
+
+  // Assemble a list of term IDs from the original entity, if any.
+  $old_tids = array();
+  foreach ($old_field as $old_item) {
+    // Some things are NULL for some reason.
+    if ($old_item['tid']) {
+      $old_tids[] = $old_item['tid'];
+    }
+  }
+
+  // Assemble a list of term IDs from the updated entity.
+  $new_tids = array();
+  foreach ($new_field as $delta => $new_item) {
+    // Some things are NULL for some reason.
+    // Allow the special tid "autocreate" so users can create new terms.
+    if ($new_item['tid'] && ($new_item['tid'] != 'autocreate')) {
+      $new_tids[$delta] = $new_item['tid'];
+    }
+  }
+
+  // Check for added tids, and unset ones the user may not add.
+  $added = array_diff($new_tids, $old_tids);
+  $may_not_add = taxonomy_access_create_disallowed($added);
+
+  // Check for removed tids, and restore ones the user may not remove.
+  $removed = array_diff($old_tids, $new_tids);
+  $may_not_remove = taxonomy_access_create_disallowed($removed);
+
+  // If there were any disallowed changes, return them.
+  if (!empty($may_not_add) || !empty($may_not_remove)) {
+    return array('added' => $may_not_add, 'removed' => $may_not_remove);
+  }
+
+  // Return FALSE if all changes were valid.
+  return FALSE;
+}
+
+
+
+/**
+ * Implements hook_help().
+ */
+function taxonomy_access_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#taxonomy_access':
+      $message = '';
+      $message .= ''
+        . '<p>' . t('The Taxonomy Access Control module allows users to specify how each category can be used by various roles.') . '</p>'
+        . '<p>' . t('Permissions can be set differently for each user role. Be aware that setting Taxonomy Access permissions works <em>only within one user role</em>.') . '</p>'
+        . '<p>' . t('(For users with multiple user roles, see section <a href="#good-to-know">Good to know</a> below.)') . '</p><hr /><br />'
+        . "<h3>" . t("On this page") . "</h3>"
+        . "<ol>"
+        . '<li><a href="#grant">' . t("Grant types") . '</a></li>'
+        . '<li><a href="#perm">' . t("Permission options") . '</a></li>'
+        . '<li><a href="#defaults">' . t("Global and vocabulary defaults") . '</a></li>'
+        . '<li><a href="#good-to-know">' . t("Good to know") . '</a></li>'
+        . "</ol><hr /><br />"
+        . '<h3 id="grant">' . t("Grant types") . '</h3>'
+        . '<p>' . t('On the category permissions page for each role, administrators can configure five types of permission for each term: <em>View, Update, Delete, Add Tag</em> (formerly <em>Create</em>), and <em>View Tag</em>: (formerly <em>List</em>') . '</p>'
+        . _taxonomy_access_grant_help_table()
+        . '<p>' . t('<em>View</em>, <em>Update</em>, and <em>Delete</em> control the node access system.  <em>View Tag</em> and <em>Add Tag</em> control the terms themselves.  (Note: In previous versions of Taxonomy Access Control, there was no <em>View Tag</em> permission its functionality was controlled by the <em>View</em> permission.)') . '</p><hr /><br />'
+        . '<h3 id="perm">' . t("Permission options") . "</h3>"
+        . '<p>' . t('<strong><em>View</em>, <em>Update</em>, and <em>Delete</em> have three options for each term:</strong> <em>Allow</em> (<acronym title="Allow">A</acronym>), <em>Ignore</em> (<acronym title="Ignore">I</acronym>), and <em>Deny</em> (<acronym title="Deny">D</acronym>).  Indicate which rights each role should have for each term.  If a node is tagged with multiple terms:') . '</p>'
+        . "<ul>\n"
+        . "<li>"
+        . t('<em>Deny</em> (<acronym title="Deny">D</acronym>) overrides <em>Allow</em> (<acronym title="Allow">A</acronym>) within a role.')
+        . "</li>"
+        . "<li>"
+        . t('Both <em>Allow</em> (<acronym title="Allow">A</acronym>) and <em>Deny</em> (<acronym title="Deny">D</acronym>) override <em>Ignore</em> (<acronym title="Ignore">I</acronym>) within a role.')
+        . "</li>"
+        . "<li>"
+        . t('If a user has <strong>multiple roles</strong>, an <em>Allow</em> (<acronym title="Allow">A</acronym>) from one role <strong>will</strong> override a <em>Deny</em> (<acronym title="Deny">D</acronym>) in another.  (For more information, see section <a href="#good-to-know">Good to know</a> below.)')
+        . "</li>"
+        . "</ul>\n\n"
+        . '<p>' . t('<strong><em>Add Tag</em> and <em>View Tag</em> have only two options for each term:</strong>  <em>Yes</em> (selected) or <em>No</em> (deselected).  Indicate what each role should be allowed to do with each term.') . '</p>'
+        . "<h4>" . t("Important notes") . "</h4>"
+        . "<ol>"
+        . "<li>"
+        . t('Custom roles <strong>will</strong> inherit permissions from the <em>authenticated user</em> role.  Be sure to <a href="@url">configure
+the authenticated user</a> properly.',
+          array("@url" => url(
+              TAXONOMY_ACCESS_CONFIG
+              . '/role/'
+              . DRUPAL_AUTHENTICATED_RID
+              . 'edit')))
+        . "</li>\n"
+        . '<li>'
+        . "<p>" . t('The <em>Deny</em> directives are processed after the <em>Allow</em> directives. (<strong><em>Deny</em> overrides <em>Allow</em></strong>.)</em>  So, if a multicategory node is in Categories "A" and "B" and a user has <em>Allow</em> permissions for <em>View</em> in Category "A" and <em>Deny</em> permissions for <em>View</em> in Category "B", then the user will NOT be permitted to <em>View</em> the node.') . '</p>'
+        . '<p>' . t('<em>Access is denied by default.</em> So, if a multicategory node is in Categories "C" and "D" and a user has <em>Ignore</em> permissions for <em>View</em> in both Category "C" and "D", then the user will <strong>not</strong> be permitted to view the node.') . '</p>'
+        . '<p>' . t('(If you are familiar with Apache mod_access, this permission system works similar to directive: <em>ORDER ALLOW, DENY</em>)') . '</p>'
+        . "</li>"
+        . "</ol>"
+        . "<hr /><br />"
+        . '<h3 id="defaults">' . t("Global and vocabulary defaults") . "</h3>"
+        . '<p>' . t('This option, just underneath the vocabulary title, <em>sets the permission that will automatically be given</em> to the role, <em>for any new terms</em> that are added within the vocabulary.  This includes terms that are added via free tagging.') . '</p><hr /><br />'
+        . '<h3 id="good-to-know">' . t('Good to know') . '</h3>'
+        . '<ol>'
+        . '<li>'
+        . '<p>' . t('<strong>Users with multiple user roles:</strong> Allow/Ignore/Deny options are interpreted <em>only within one user role</em>. When a user belongs to multiple user roles, then <strong>the user gets access if <em>any</em> of his/her user roles have the access granted.</strong>') . '</p>'
+        . '<p>' . t('In this case, permissions for the given user are calculated so that the <em>permissions of ALL of his user roles are "OR-ed" together</em>, which means that <em>Allow</em> in one role will take precedence over <em>Deny</em> in the other. This is different from how node access permissions (for multi-category nodes) are handled <em>within one user role</em>, as noted above.') . '</p>'
+        . '</li>'
+        . '<li>'
+        . '<p>' . t('<strong>Input formats:</strong>  <em>Node editing/deleting is blocked</em>, even when the user has <em>Update</em> or <em>Delete</em> permission to the node, <em>when the user is not allowed to use a filter format</em> that the node was saved at.') . '</p>'
+        . '</li>'
+        . '</ol>'
+        . '<hr /><br />'
+        ;
+      return $message;
+      break;
+  }
+}
+
+/**
+ * Assemble a table explaining each grant type for use in help documentation.
+ *
+ * @return
+ *   Themed table.
+ *
+ * @todo
+ *   We moved this here for drush.  Find a smarter way to include it on demand?
+ */
+function _taxonomy_access_grant_help_table() {
+  $header = array();
+
+  $rows = array();
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("View")),
+    "<p>"
+    . t('Grants this role the ability to view nodes with the term.  (Users must also have this permission to see <em class="perm">nodes</em> with the term listed in Views.)')
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>have</strong> <em class="perm">access content</em> permission on the <a href="@path">permissions administration form</a>.',
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node')))),
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("Update") . ", " . t("Delete")),
+    "<p>"
+    . t("Grants this role the ability to edit or delete nodes with the term, respectively.")
+    . "</p>"
+    . "<p>"
+    . t('The role must <strong>not</strong> have <em class="perm">edit any [type] content</em> or <em class="perm">delete any [type] content</em> permission on the <a href="@path">permissions administration form</a> if you wish to control them here.',
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node'))))
+    . "</p>",
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("Add Tag")),
+    "<p>"
+    . t("Grants this role the ability to add the term to a node when creating or updating it.")
+    . "</p>"
+    . "<p>"
+    . t('(Formerly <em>Create</em>).  This does <strong>not</strong> give the role the ability to create nodes by itself; the role must <strong>have</strong> <em class="perm">create [type] content</em> permission on the <a href="@path">permissions administration form</a> in order to create new nodes.',
+      array('@path' => url('admin/permissions', array('fragment' => 'module-node'))))
+    . "</p>",
+  );
+
+  $rows[] = array(
+    array('header' => TRUE, 'data' => t("View Tag")),
+    "<p>"
+    . t("(Formerly <em>List</em>.)  Whether this role can see the term listed on node pages and in lists, and whether the user can view the %taxonomy-term-page page for the term.",
+      array(
+        '%taxonomy-term-page' => "taxonomy/term/x"
+      ))
+    . "</p>"
+    . "<p>" . t("This does <strong>not</strong> control whether the role can see the <em>nodes</em> listed in Views, only the <em>term</em>.") . "</p>",
+  );
+
+  return theme('table', array('header' => $header, 'rows' => $rows, 'attributes' => array('class' => array('grant_help'))));
+}

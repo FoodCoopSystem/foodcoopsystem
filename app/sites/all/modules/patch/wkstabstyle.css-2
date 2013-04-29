@@ -1,0 +1,42 @@
+diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+old mode 100755
+new mode 100644
+index f05a701..092fc09
+--- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
++++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+@@ -35,19 +35,19 @@
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li:hover a{
+     background:transparent;
+-    color:#fff;
++    color:#fff; 
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li:hover{
+ 
+-    border: 2px solid #377e1e;
+-    background:#377e1e;
++    border: 2px solid #155C15;
++    background:#155C15;
+ 
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a,
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a:hover{
+     background:transparent;
+     color:#326301;
+-    border: 2px solid #377e1e;
++    border: 2px solid #155C15;
+     border-radius: 10px;
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active{
+@@ -57,7 +57,7 @@
+ }
+ ul.quicktabs-tabs.quicktabs-style-wkstabstyle li.active a{
+     background:transparent;
+-    color:#377e1e;
+-    border: 2px solid #377e1e;
++    color:#155C15;
++    border: 2px solid #155C15;
+     border-radius: 10px;
+-}
+\ No newline at end of file
++}

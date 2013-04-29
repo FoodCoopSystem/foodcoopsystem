@@ -1,0 +1,18 @@
+diff --git a/crm/sites/all/modules/contrib/views/handlers/views_handler_field.inc b/crm/sites/all/modules/contrib/views/handlers/views_handler_field.inc
+index ff2c32d..31af24c 100755
+--- a/crm/sites/all/modules/contrib/views/handlers/views_handler_field.inc
++++ b/crm/sites/all/modules/contrib/views/handlers/views_handler_field.inc
+@@ -81,7 +81,12 @@
+   function query() {
+     $this->ensure_my_table();
+     // Add the field.
+-    $params = $this->options['group_type'] != 'group' ? array('function' => $this->options['group_type']) : array();
++    if (isset($this->options['group_type'])) {
++      $params = $this->options['group_type'] != 'group' ? array('function' => $this->options['group_type']) : array();
++    }
++    else {
++      $params = array();
++    }
+     $this->field_alias = $this->query->add_field($this->table_alias, $this->real_field, NULL, $params);
+ 
+     $this->add_additional_fields();

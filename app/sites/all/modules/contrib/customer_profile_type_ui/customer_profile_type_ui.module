@@ -1,0 +1,340 @@
+<?php
+
+/**
+ * @file
+ *
+ * CUSTOMER PROFILE TYPES UI
+ *
+ * 
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function customer_profile_type_ui_menu() {
+  $items = array();
+
+  // Note: admin/commerce/customer-profiles/types/add would be the logical
+  //       choice for adding new profile types, but that path conficts with
+  //       the customer_profile_ui module.
+
+  // Add a customer profile type.
+  $items['admin/commerce/customer-profiles/profile-types/add'] = array(
+    'title' => 'Add a customer profile type',
+    'description' => 'Add a new customer profile type.',
+    'page callback' => 'customer_profile_type_ui_add_page',
+    'access arguments' => array('administer customer profile types'),
+    'weight' => 10,
+    'file' => 'includes/customer_profile_type_ui.ui.inc',
+  );
+  return $items;
+}
+
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ */
+function customer_profile_type_ui_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  // Add action link 'admin/commerce/customer-profiles/profile-types/add' on
+  // 'admin/commerce/customer-profiles/types'.
+  if ($root_path == 'admin/commerce/customer-profiles/types') {
+    $item = menu_get_item('admin/commerce/customer-profiles/profile-types/add');
+    if ($item['access']) {
+      $data['actions']['output'][] = array(
+        '#theme' => 'menu_local_action',
+        '#link' => $item,
+      );
+    }
+  }
+}
+
+
+/**
+* Implementation of hook_commerce_customer_profile_type_info
+*/
+function customer_profile_type_ui_commerce_customer_profile_type_info() {
+  $profile_types = array();
+
+  $result = db_query('SELECT * FROM {customer_profile_type_ui} cpt');
+
+  foreach ($result as $customer_profile_type) {
+    $profile_types[$customer_profile_type->type] = array(
+      'type' => $customer_profile_type->type, 
+      'name' => t($customer_profile_type->name), 
+      'description' => t($customer_profile_type->description), 
+      'help' => $customer_profile_type->help,
+      'addressfield' => (bool)$customer_profile_type->addressfield,
+    );
+  }
+
+  return $profile_types;
+}
+
+
+/**
+ * Implements hook_commerce_checkout_pane_info_alter().
+ */
+function customer_profile_type_ui_commerce_checkout_pane_info_alter(&$checkout_panes) {
+//return;
+  // We'll only do this if rules is installed and enabled.
+  if (!module_exists('rules')) return;
+  // Store the initial state of the checkout panes before altering.
+  _customer_profile_type_ui_store_checkout_pane_contexts($checkout_panes);
+
+  // We'll override so that we can alter the forms using rules later.
+  foreach (commerce_customer_profile_types() as $type => $profile_type) {
+    if (isset($checkout_panes['customer_profile_' . $type])) {
+      $checkout_panes['customer_profile_' . $type]['file']   = 'includes/customer_profile_type_ui.checkout_pane.inc';
+      $checkout_panes['customer_profile_' . $type]['base']   = 'customer_profile_type_ui_pane';
+      $checkout_panes['customer_profile_' . $type]['module'] = 'customer_profile_type_ui';
+    }
+  }
+}
+
+
+/**
+ * Stores the original checkout panes before altering them, so that we can call
+ * the proper CALLBACK functions later on.
+ */
+function _customer_profile_type_ui_store_checkout_pane_contexts($checkout_panes = NULL) {
+  $original_panes = &drupal_static(__FUNCTION__);
+
+  if (!isset($original_panes)) {
+    // Merge in default callbacks if they hadn't been previously set.
+    foreach (commerce_customer_profile_types() as $type => $profile_type) {
+      foreach (array('settings_form', 'checkout_form', 'checkout_form_validate', 'checkout_form_submit', 'review') as $callback) {
+        if (!isset($checkout_panes['customer_profile_' . $type]['callbacks'][$callback])) {
+          $checkout_panes['customer_profile_' . $type]['callbacks'][$callback] = $checkout_panes['customer_profile_' . $type]['base'] . '_' . $callback;
+        }
+      }
+    }
+    $original_panes = $checkout_panes;
+  }
+  return $original_panes;
+}
+
+
+/**
+ * Returns an array of customer profile options formatted like hook_options_list().
+ */
+function customer_profile_type_ui_rules_options_list() {
+  $profile_type_options = array();
+  foreach (commerce_customer_profile_types() as $type => $profile_type) $profile_type_options['customer_profile_' . $type] = $profile_type['name'];
+  return $profile_type_options;
+}
+
+
+/**
+ * Implements hook_field_widget_info().
+ *
+ * Define a widget for choosing which customer profiles to enable/disable on the order form.
+ */
+function customer_profile_type_ui_field_widget_info() {
+  $widgets = array();
+
+  $widgets['commerce_customer_profile_type_ui_manager'] = array(
+    'label' => t('Dynamic profile form manager'),
+    'description' => t('Use an ajaxified checkbox to enable/disable customer profiles on the Commerce Order edit form.'),
+    'field types' => array('commerce_customer_profile_reference'),
+    'settings' => array('wrapper_type' => ''),
+    'behaviors' => array(
+      'multiple values' => FIELD_BEHAVIOR_CUSTOM,
+      'default value' => FIELD_BEHAVIOR_NONE,
+    ),
+  );
+
+  return $widgets;
+}
+
+/*
+ * Implements hook_field_widget_settings_form().
+ * 
+ * Define settings to add collapsible functionality to customer profile field sets.
+ */
+function customer_profile_type_ui_field_widget_settings_form($field, $instance) {
+  $widget = $instance['widget'];
+  $settings = $widget['settings'];
+
+  $form['wrapper_type'] = array(
+    '#type' => 'radios',
+    '#title' => t('Field form wrapper'),
+    '#options' => array(
+      ''          => t('None'),
+      'collapsed' => t('Collapsible (collapsed by default)'),
+      'expanded'  => t('Collapsible (expanded by default)'),
+    ),
+    '#default_value' => $settings['wrapper_type'],
+    '#description' => t('Some forms can be large. Espescially in the case of the order edit form you may want to hide some profiles in a collapsed field set. Choose the type if you do.'),
+    '#weight' => 16,
+  );
+
+  return $form;
+}
+
+
+/*
+ * Implemements hook_field_widget_info_alter.
+ * 
+ * Add new settings to fields using the 'commerce_customer_profile_manager' widget
+ * so we can choose if field set wrapped customer profile forms may be collapsible.
+ */
+function customer_profile_type_ui_field_widget_info_alter(&$info) {
+  if (isset($info['commerce_customer_profile_manager'])) {
+    $info['commerce_customer_profile_manager']['settings'] = array('wrapper_type' => '');
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ * 
+ * Lets add the new collapisble field set settings to fields with
+ * the 'commerce_customer_profile_manager' widget.
+ */
+function customer_profile_type_ui_form_field_ui_field_edit_form_alter(&$form, &$form_state, $form_id) {
+  $field = $form['#field'];
+  $instance = $form['#instance'];
+  if (!empty($instance['widget']['type']) && 'commerce_customer_profile_manager' == $instance['widget']['type']) {
+    $form['instance']['widget']['settings'] = customer_profile_type_ui_field_widget_settings_form($field, $instance);
+    $form['instance']['widget']['active']['#value'] = 1;
+  }
+}
+
+/**
+ * Implements hook_field_widget_form().
+ *
+ * Used to define the form element for our custom 'enable profile' button and profile form.
+ */
+function customer_profile_type_ui_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $enabled = FALSE;
+  
+  if (!empty($items) && !isset($form_state['values']['customer_profile_ui_checkboxes'][$instance['field_name']])) {
+    // The order has a profile of this type attached via this field so fall back to the standard
+    // commerce_order widget to display the profile's form and its values.
+    $enabled = TRUE;
+  }
+  if (!$enabled) {
+    // Set up the customer profile form enabling checkboxes...
+    $profile_type = commerce_customer_profile_type_load($field['settings']['profile_type']);
+    if (!isset($form['customer_profile_type_ui'])) {
+      $form['customer_profile_type_ui'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Customer Profiles'),
+        '#description' => t('The following customer profile types are not currently attached to the order. You may  enable/disable them at will. Once you\'ve filled out a profile click the <em>save</em> button to attach it to the order and save it. If you change your mind about adding a particular profile uncheck its respective checkbox before saving. If you fail to do so the empty profile may be attached and saved to the order.'),
+        '#weight' => (!empty($form['commerce_line_items']['#weight'])) ? $form['commerce_line_items']['#weight'] + 1 : -9,
+      );
+    }
+    if (!isset($form['customer_profile_type_ui']['customer_profile_ui_checkboxes'])) {
+      $form['customer_profile_type_ui']['customer_profile_ui_checkboxes'] = array(
+        '#type' => 'checkboxes', 
+        '#title' => t('Select customer profiles to enable'),
+        '#options' => array(),
+        '#weight' => 0,
+        '#ajax' => array(
+          'method' => 'after',
+          'callback' => 'ajax_customer_profile_type_ui_callback',
+          'wrapper' => 'customer-profile-ui-wrapper',
+        ),
+        '#prefix' => '<div id="customer-profile-ui-wrapper">',
+        '#suffix' => '<div/>',
+      );
+    }
+    // Add a checkbox for the order field specific to this customer profile type.
+    $form['customer_profile_type_ui']['customer_profile_ui_checkboxes']['#options'][$instance['field_name']] = t('Enable %profile profile', array('%profile' => check_plain($profile_type['name'])));
+  }
+  
+  // The profile form is enabled so wrap it for ajax toggling.
+  if (!empty($form_state['values']['customer_profile_ui_checkboxes'][$instance['field_name']])) {
+    $enabled = TRUE;
+    $element['#prefix'] = (isset($element['#prefix']) ? $element['#prefix'] : '') . '<div id="' . $instance['field_name'] . '-cptu-wrapper">';
+    $element['#suffix'] = (isset($element['#suffix']) ? $element['#suffix'] : '') . '<div/>';
+  } else {
+    // TODO: Not sure, but sometime in the future
+    // we may discover something needs to go here.
+  }
+  
+  // Add the costomer profile edit form for this field.
+  if ($enabled) {
+    $settings = $instance['widget']['settings'];
+    // Enable the customer profile form for this field by using the commerce_customer form functions.
+    $instance['widget']['type'] = 'commerce_customer_profile_manager';
+    $element += commerce_customer_field_widget_form($form, $form_state, $field, $instance, $langcode, $items, $delta, $element);
+    if (FALSE !== ($key = array_search('commerce_customer_profile_manager_validate', $element['#element_validate']))) {
+      $element['#element_validate'][$key] = 'override_commerce_customer_profile_manager_validate';
+    }
+    if (!empty($instance['widget']['settings']['wrapper_type'])) {
+      // Loop through the profiles in the manager table.
+      foreach (element_children($element['profiles']) as $key) {
+        $element['profiles'][$key]['#collapsible'] = TRUE;
+        $element['profiles'][$key]['#collapsed'] = ('collapsed' == $instance['widget']['settings']['wrapper_type']);
+      }
+    }
+    return $element;
+  }
+}
+
+/*
+ * Implements hook_field_widget_WIDGET_TYPE_form_alter.
+ * 
+ * We want to override the validation callback given for the commerce_customer_profile_manager widget.
+ * We do this because it is submitting the profile info and saving during its validation call. However,
+ * this is not acceptable during our ajax callback when enabling/disabling profile panes.
+ */
+function customer_profile_type_ui_field_widget_commerce_customer_profile_manager_form_alter(&$element, &$form_state, $context) {
+  if (FALSE !== ($key = array_search('commerce_customer_profile_manager_validate', $element['#element_validate']))) {
+    $element['#element_validate'][$key] = 'override_commerce_customer_profile_manager_validate';
+  }
+
+  // Alter the customer profile form's field set to make it collapsible.
+  if (!empty($context['instance']['widget']['settings']['wrapper_type'])) {
+    // Loop through the profiles in the manager table.
+    foreach (element_children($element['profiles']) as $key) {
+      $element['profiles'][$key]['#collapsible'] = TRUE;
+      $element['profiles'][$key]['#collapsed'] = ('collapsed' == $context['instance']['widget']['settings']['wrapper_type']);
+    }
+  }
+}
+
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function customer_profile_type_ui_field_widget_error($element, $error) {
+  form_error($element, $error['message']);
+}
+
+
+/*
+ * Callback function for our ajaxified 'enable profile' checkboxes on the
+ * commerce order form.
+ */
+function ajax_customer_profile_type_ui_callback ($form, $form_state) {
+  // Only send something back if the ajax call was triggered by one of our checkboxes.
+  if (!empty($form_state['triggering_element']) && (in_array('customer_profile_ui_checkboxes', $form_state['triggering_element']['#parents']))) {
+    if ($field_name = $form_state['triggering_element']['#value']) {
+      // Append field form element to the order form.
+      return $form[$field_name];
+    } else if (isset($form[$field_name = $form_state['triggering_element']['#return_value']])) {
+      // Remove the field form element from the order form
+      return array('#type' => 'ajax', '#commands' => array(ajax_command_remove('#' . $field_name . '-cptu-wrapper')));
+    }
+  }
+  // If all fails return a message.
+  drupal_set_message(t('Could not toggle a profile form for the selected checkbox.'), 'warning');
+  return array('#type' => 'ajax', '#commands' => array(ajax_command_prepend(NULL, theme('status_messages'))));
+  
+}
+
+/*
+ * Validation callback for fields using the 'commerce_customer_profile_type_ui_manager' widget.
+ * 
+ * Only pass validation on to the fields if the form is being submitted the usual way via
+ * the submit button and not an ajax callback.
+ */
+function override_commerce_customer_profile_manager_validate($element, &$form_state, $form) {
+  if (!empty($form_state['triggering_element']) && (in_array('customer_profile_ui_checkboxes', $form_state['triggering_element']['#parents']))) {
+    form_set_value($element, array(), $form_state);
+  } else {
+    commerce_customer_profile_manager_validate($element, $form_state, $form);
+  }
+}
+

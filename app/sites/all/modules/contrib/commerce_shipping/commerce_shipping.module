@@ -1,0 +1,496 @@
+<?php
+
+/**
+ * @file
+ * Defines the shipping system and checkout integration.
+ */
+
+
+/**
+ * Implements hook_commerce_checkout_pane_info().
+ */
+function commerce_shipping_commerce_checkout_pane_info() {
+  $checkout_panes = array();
+
+  $checkout_panes['commerce_shipping'] = array(
+    'title' => t('Shipping'),
+    'page' => 'checkout',
+    'locked' => TRUE,
+    'file' => 'includes/commerce_shipping.checkout_pane.inc',
+    'base' => 'commerce_shipping_pane',
+    'weight' => 2,
+  );
+
+  return $checkout_panes;
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function commerce_shipping_views_api() {
+  return array(
+    'api' => 3,
+    'path' => drupal_get_path('module', 'commerce_shipping') . '/includes/views',
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_type().
+ */
+function commerce_shipping_ctools_plugin_type() {
+  return array(
+    // Quote plugins are used for calculating shipping costs.
+    'quotes' => array(
+      'child plugins' => FALSE,
+      'classes' => array('handler'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function commerce_shipping_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'commerce_shipping') {
+    return 'plugins/' . $plugin_type;
+  }
+}
+
+/**
+ * Implements hook_commerce_customer_profile_type_info().
+ */
+function commerce_shipping_commerce_customer_profile_type_info() {
+  $profile_types = array();
+
+  $profile_types['shipping'] = array(
+    'type' => 'shipping',
+    'name' => t('Shipping information'),
+    'description' => t('The profile used to collect shipping information on the checkout and order forms.'),
+  );
+
+  return $profile_types;
+}
+
+/**
+ * Implements hook_commerce_line_item_info().
+ */
+function commerce_shipping_commerce_line_item_type_info() {
+  $line_item_types = array();
+
+  $line_item_types['shipping'] = array(
+    'type' => 'shipping',
+    'name' => t('Shipping'),
+    'description' => t('References a shipping method and displays it with the service title.'),
+    'add_form_submit_value' => t('Add shipping'),
+    'base' => 'commerce_shipping_line_item',
+  );
+
+  return $line_item_types;
+}
+
+/**
+ * Ensures the shipping line item type contains a field for shipping method.
+ *
+ * This function is called by the line item module when it is enabled or this
+ * module is enabled. It invokes this function using the configuration_callback
+ * as specified above.
+ */
+function commerce_shipping_line_item_configuration() {
+  // TODO: Maybe we should create our own field type to reference the shipping
+  // method. Since we only want to store its name, list_text should suffice.
+
+  $field = field_info_field('commerce_shipping_method');
+  $instance = field_info_instance('commerce_line_item', 'commerce_shipping_method', 'shipping');
+
+  if (empty($field)) {
+    $field = array(
+      'field_name' => 'commerce_shipping_method',
+      'type' => 'list_text',
+      'cardinality' => 1,
+      'entity_types' => array('commerce_line_item'),
+      'translatable' => FALSE,
+      'locked' => TRUE,
+      'settings' => array(
+        'allowed_values_function' => 'commerce_shipping_get_shipping_methods_options',
+      ),
+    );
+    $field = field_create_field($field);
+  }
+
+  if (empty($instance)) {
+    $instance = array(
+      'field_name' => 'commerce_shipping_method',
+      'entity_type' => 'commerce_line_item',
+      'bundle' => 'shipping',
+      'label' => t('Shipping method'),
+      'required' => TRUE,
+      'settings' => array(),
+
+      'widget' => array(
+        'type' => 'options_select',
+        'weight' => 0,
+      ),
+
+      'display' => array(
+        'display' => array(
+          'label' => 'hidden',
+          'weight' => 0,
+        ),
+      ),
+    );
+    field_create_instance($instance);
+  }
+}
+
+/**
+ * Return an array of enabled shipping methods formatted as an options array
+ * used in FAPI.
+ *
+ * @return array of shipping methods.
+ */
+function commerce_shipping_get_shipping_methods_options() {
+  $options = array();
+
+  // Create a fake order that can be used to attach the shipping methods to.
+  $order = commerce_order_new();
+  $order->commerce_shipping_methods = array();
+
+  rules_invoke_all('commerce_shipping_methods', $order);
+
+  foreach ($order->commerce_shipping_methods as $instance_id => $shipping_method) {
+    $options[$instance_id] = $shipping_method['label'];
+  }
+
+  return $options;
+}
+
+/**
+ * Returns an appropriate title for this line item.
+ */
+function commerce_shipping_line_item_title($line_item) {
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+
+  // Try to get the title from the plugin.
+  if ($line_item_wrapper->commerce_shipping_method->value()) {
+    $shipping_method = commerce_shipping_plugin_get_plugin('quotes', $line_item_wrapper->commerce_shipping_method->value());
+
+    if (!empty($shipping_method)) {
+      return $shipping_method['display_title'];
+    }
+  }
+
+  // Fallback to the line item label.
+  return $line_item->line_item_label;
+}
+
+
+/**
+ * Returns the elements necessary to add a shipping line item through a line
+ * item manager widget.
+ */
+function commerce_shipping_line_item_add_form($form_state) {
+  $order = $form_state['commerce_order'];
+  $form = array();
+
+  $form['shipping_method'] = array(
+    '#type' => 'select',
+    '#title' => t('Shipping method'),
+    '#options' => commerce_shipping_get_shipping_methods_options(),
+  );
+
+  $form['amount'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Amount'),
+    '#default_value' => $default_amount,
+    '#size' => 10,
+  );
+
+  $form['currency_code'] = array(
+    '#type' => 'select',
+    '#title' => t('Currency'),
+    '#options' => commerce_currency_code_options_list(),
+    '#default_value' => commerce_default_currency(),
+  );
+
+  return $form;
+}
+
+/**
+ * Adds the selected shipping information to a line item added via a line item
+ * manager widget.
+ *
+ * @param $line_item
+ *   The newly created line item object.
+ * @param $element
+ *   The array representing the widget form element.
+ * @param $form_state
+ *   The present state of the form upon the latest submission.
+ * @param $form
+ *   The actual form array.
+ *
+ * @return
+ *   NULL if all is well or an error message if something goes wrong.
+ */
+function commerce_shipping_line_item_add_form_submit(&$line_item, $element, &$form_state, $form) {
+  $order = $form_state['commerce_order'];
+
+  // Populate the line item with the shipping data.
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->commerce_shipping_method = $element['actions']['shipping_method']['#value'];
+  $line_item_wrapper->commerce_unit_price->amount = commerce_currency_decimal_to_amount($element['actions']['amount']['#value'], $element['actions']['currency_code']['#value']);
+  $line_item_wrapper->commerce_unit_price->currency_code = $element['actions']['currency_code']['#value'];
+  $line_item_wrapper->commerce_unit_price->data = commerce_price_component_add(
+    $line_item_wrapper->commerce_unit_price->value(),
+    'quote',
+    $line_item_wrapper->commerce_unit_price->value(),
+    TRUE,
+    FALSE
+  );
+}
+
+/**
+ * Returns a shipping method instance ID given a shipping method ID and the Rule
+ * containing an enabling action with settings.
+ *
+ * @param $method_id
+ *   The ID of the shipping method.
+ * @param $rule
+ *   The Rules configuration object used to provide settings for the method.
+ *
+ * @return
+ *   A string used as the shipping method instance ID.
+ */
+function commerce_shipping_method_instance_id($method_id, $rule) {
+  $parts = array($method_id, $rule->name);
+  return implode('|', $parts);
+}
+
+/**
+ * Returns a shipping method instance object which includes the settings
+ * specific to the context of the instance.
+ *
+ * @param $instance_id
+ *   A shipping method instance ID in the form of a pipe delimited string
+ *     containing the method_id and the enabling Rule's name.
+ *
+ * @return
+ *   The shipping method instance object which is identical to the shipping method
+ *     object with the addition of the settings array.
+ */
+function commerce_shipping_method_instance_load($instance_id) {
+  // Return FALSE if there is no pipe delimeter in the instance ID.
+  if (strpos($instance_id, '|') === FALSE) {
+    return FALSE;
+  }
+
+  // Explode the method key into its component parts.
+  list($method_id, $rule_name) = explode('|', $instance_id);
+
+  // Return FALSE if we didn't receive a proper instance ID.
+  if (empty($method_id) || empty($rule_name)) {
+    return FALSE;
+  }
+
+  // First load the shipping method and add the instance ID.
+  $shipping_method = commerce_shipping_plugin_get_plugin('quotes', $method_id);
+  $shipping_method['instance_id'] = $instance_id;
+
+  // Then load the Rule configuration that enables the method.
+  $rule = rules_config_load($rule_name);
+
+  // Iterate over its actions to find one with the matching element name and
+  // pull its settings into the shipping method object.
+  foreach ($rule->actions() as $action) {
+    if ($action->getElementName() == 'commerce_shipping_enable_' . $method_id) {
+      // Set label if we have any set.
+      if (is_array($action->settings['shipping_method']) && !empty($action->settings['shipping_method']['shipping_label'])) {
+        $shipping_method['shipping_label'] = $action->settings['shipping_method']['shipping_label'];
+      }
+      if (is_array($action->settings['shipping_method']['settings'])) {
+        $shipping_method['settings'] = $action->settings['shipping_method']['settings'];
+      }
+    }
+  }
+
+  return $shipping_method;
+}
+
+/**
+ * Creates a new product line item populated with the proper product values.
+ *
+ * @param $plugin
+ *   The commerce shipping ctools plugin.
+ * @param $language
+ *   Optionally specify the language for the line item.
+ *
+ * @return
+ *   Line item object with default values.
+ */
+function commerce_shipping_line_item_new($plugin) {
+  // Create the new line item.
+  $line_item = commerce_line_item_new('shipping');
+
+  $line_item->line_item_label = $plugin['display_title'];
+  $line_item->quantity = 1;
+
+  $line_item_wrapper = entity_metadata_wrapper('commerce_line_item', $line_item);
+  $line_item_wrapper->commerce_shipping_method = $plugin['method_id'];
+
+  return $line_item;
+}
+
+/**
+ * Deletes a line item from an order.
+ *
+ * @param $order
+ *   The order to delete from.
+ * @param $line_item_id
+ *   The ID of the product line item to delete from the order.
+ * @param $skip_save
+ *   TRUE to skip saving the order after deleting the line item; used when the
+ *     order would otherwise be saved or to delete multiple product line items
+ *     from the order and then save.
+ *
+ * @return
+ *   The order with the matching line item deleted from the line item
+ *     reference field.
+ */
+function commerce_shipping_line_item_delete($order, $line_item_id, $skip_save = FALSE) {
+  // Remove the line item from the line item reference field.
+  $order = commerce_entity_reference_delete('commerce_order', $order, 'commerce_line_items', $line_item_id);
+
+  // Delete the actual line item.
+  commerce_line_item_delete($line_item_id);
+  if ($skip_save == FALSE) {
+    commerce_order_save($order);
+  }
+
+  return $order;
+}
+
+/**
+ * Implements hook_commerce_price_component_type_info().
+ */
+function commerce_shipping_commerce_price_component_type_info() {
+  $price_components = array(
+    'quote' => array(
+      'title' => t('Shipping costs'),
+      'display_title' => t('Shipping costs'),
+      'weight' => -40,
+    ),
+  );
+  foreach (commerce_shipping_plugin_get_plugins() as $plugin) {
+    if (!empty($plugin['price_component'])) {
+      $price_components['quote_' . $plugin['name']] = $plugin['price_component'];
+    }
+  }
+  return $price_components;
+}
+
+/**
+ * Util function to add a set of default values to quote plugins.
+ *
+ * @param $plugin
+ *    The quote plugin array passed by reference.
+ */
+function commerce_shipping_set_default_quotes_values(&$plugin) {
+  if (!isset($plugin['display_title'])) {
+    $plugin['display_title'] = $plugin['title'];
+  }
+  if (!isset($plugin['create_rule'])) {
+    $plugin['create_rule'] = TRUE;
+  }
+  if (!isset($plugin['settings'])) {
+    $plugin['settings'] = array();
+  }
+  if (!isset($plugin['shipping_label'])) {
+    $plugin['settings'] = '';
+  }
+  if (!isset($plugin['price_component'])) {
+    $plugin['price_component'] = array();
+  }
+}
+
+/**
+ * Get commerce_shipping plugins of a specific type
+ *
+ * @param $plugin_type
+ *    The type of plugin to get.
+ *
+ * @return array of ctools plugin definitions.
+ */
+function commerce_shipping_plugin_get_plugins($plugin_type = 'quotes') {
+  ctools_include('plugins');
+  $plugins = ctools_get_plugins('commerce_shipping', $plugin_type);
+  foreach ($plugins as $id => &$plugin) {
+    if ($plugin_type == 'quotes') {
+      if (!isset($plugin['method_id'])) {
+        $plugin['method_id'] = $id;
+      }
+      commerce_shipping_set_default_quotes_values($plugin);
+    }
+  }
+  return $plugins;
+}
+
+/**
+ * Util function to get shipping plugins.
+ */
+function commerce_shipping_plugin_get_plugin($plugin_type, $id) {
+  ctools_include('plugins');
+  $plugin = ctools_get_plugins('commerce_shipping', $plugin_type, $id);
+  if ($plugin_type == 'quotes') {
+    if (!isset($plugin['method_id'])) {
+      $plugin['method_id'] = $id;
+    }
+    commerce_shipping_set_default_quotes_values($plugin);
+  }
+  return $plugin;
+}
+
+/**
+ * Util function to get shipping plugin class.
+ */
+function commerce_shipping_plugin_get_plugin_class($plugin_type, $id) {
+  $plugin =  commerce_shipping_plugin_get_plugin($plugin_type, $id);
+  if (is_array($plugin) && isset($plugin['handler']['class'])) {
+    return $plugin['handler']['class'];
+  }
+  return FALSE;
+}
+
+/**
+ * Util function to return a instantiated plugin class.
+ */
+function commerce_shipping_plugin_get_plugin_class_init($plugin_type, $id) {
+  $class = commerce_shipping_plugin_get_plugin_class($plugin_type, $id);
+  if ($class) {
+    return new $class();
+  }
+  return FALSE;
+}
+
+/**
+ * Delete all shipping line items on an order.
+ *
+ * @param $order
+ *  The order object to delete the shipping line items from.
+ */
+function commerce_shipping_clear_order($order) {
+  $order_wrapper = entity_metadata_wrapper('commerce_order', $order);
+  // When deleting more than one line item, metadata_wrapper will give problems
+  // if deleting while looping through the line items. So first remove from order
+  // and then delete the line items.
+  $line_items_to_delete = array();
+  foreach ($order_wrapper->commerce_line_items as $delta => $line_item_wrapper) {
+    if ($line_item_wrapper->type->value() == 'shipping') {
+      $line_items_to_delete[] = $line_item_wrapper->line_item_id->value();
+      $order_wrapper->commerce_line_items->offsetUnset($delta);
+    }
+  }
+  $order_wrapper->save();
+  // Delete line items.
+  foreach ($line_items_to_delete as $line_item_id) {
+    commerce_line_item_delete($line_item_id);
+  }
+}

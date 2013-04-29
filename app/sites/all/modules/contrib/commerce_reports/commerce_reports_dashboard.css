@@ -1,0 +1,196 @@
+div.commerce-reports-dashboard-block {
+  display: block;
+  margin: 5px 0;
+  vertical-align: top;
+}
+
+div.commerce-reports-dashboard-block .commerce-reports-dashboard-section {
+  overflow: hidden;
+  display: none;
+}
+
+div.commerce-reports-dashboard-block .commerce-reports-dashboard-section table {
+  width: 100%;
+  border-spacing: 0;
+  margin: 0;
+}
+
+
+div.commerce-reports-dashboard-block .visible {
+  display: inline-block;
+}
+
+div.commerce-reports-dashboard-block .header {
+  background: #E1E2DC;
+  border-width: 1px;
+  border-style: solid;
+  border-color: #BEBFB9;
+  padding: 3px 10px;
+  display: block;
+  overflow: hidden;
+  position: relative;
+  -moz-box-sizing: content-box;
+  -webkit-box-sizing: content-box;
+  box-sizing: content-box;
+}
+
+div.commerce-reports-dashboard-block .header h1, div.commerce-reports-dashboard-block .header span, div.commerce-reports-dashboard-block .header div.operations {
+  display: inline-block;
+  vertical-align: top;
+  margin: 0;
+  padding: 0;
+}
+
+div.commerce-reports-dashboard-block .header h1 {
+  color: black;
+  font-size: 14px;
+  float: left;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+div.commerce-reports-dashboard-block .header span {
+  margin-left: 5px;
+  font-size: 10px;
+  vertical-align: top;
+}
+
+div.commerce-reports-dashboard-block .header div.operations {
+  float: right;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul {
+  display: inline-block;
+  list-style: none;
+  margin: 0;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul li {
+  display: inline-block;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul li a {
+  font-size: 10px;
+  color: #ffffff;
+  text-shadow: #333 0 1px 0;
+  padding: 2px 10px;
+  -moz-border-radius: 10px;
+  -webkit-border-radius: 10px;
+  border-radius: 10px;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul li a {
+  background: #acacac;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul li a.activated {
+  background: #555555;
+}
+
+div.commerce-reports-dashboard-block .header div.operations ul li a:hover {
+  text-decoration: none;
+  background: #555555;
+}
+
+div.commerce-reports-dashboard-block table {
+  border-top: none;
+}
+
+div.commerce-reports-dashboard-block table:first-child th {
+  border-top: none;
+}
+
+/* Specific styling for individual blocks */
+div.commerce-reports-dashboard-overview-block div.commerce-reports-dashboard-section-yesterday {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ==================================================================================================================== */
+/* ! The 1140px Grid V2 by Andy Taylor \ http://cssgrid.net \ http://www.twitter.com/andytlr \ http://www.andytlr.com   */
+/* ==================================================================================================================== */
+
+.commerce-reports-dashboard-row {
+width: 100%;
+max-width: 1140px;
+min-width: 755px;
+margin: 0 auto;
+overflow: hidden;
+}
+
+.commerce-reports-dashboard-onecol,
+.commerce-reports-dashboard-twocol,
+.commerce-reports-dashboard-threecol,
+.commerce-reports-dashboard-fourcol,
+.commerce-reports-dashboard-fivecol,
+.commerce-reports-dashboard-sixcol,
+.commerce-reports-dashboard-sevencol,
+.commerce-reports-dashboard-eightcol,
+.commerce-reports-dashboard-ninecol,
+.commerce-reports-dashboard-tencol,
+.commerce-reports-dashboard-elevencol {
+margin-right: 3.8%;
+float: left;
+min-height: 1px;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-onecol {
+width: 4.85%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-twocol {
+width: 13.45%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-threecol {
+width: 22.05%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-fourcol {
+width: 30.75%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-fivecol {
+width: 39.45%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-sixcol {
+width: 48%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-sevencol {
+width: 56.75%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-eightcol {
+width: 65.4%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-ninecol {
+width: 74.05%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-tencol {
+width: 82.7%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-elevencol {
+width: 91.35%;
+}
+
+.commerce-reports-dashboard-row .commerce-reports-dashboard-twelvecol {
+width: 100%;
+float: left;
+}
+
+.commerce-reports-dashboard-last {
+margin-right: 0px;
+}
+
+.commerce-reports-dashboard-row img, .commerce-reports-dashboard-row object, .commerce-reports-dashboard-row embed {
+max-width: 100%;
+}
+
+.commerce-reports-dashboard-row img {
+	height: auto;
+}

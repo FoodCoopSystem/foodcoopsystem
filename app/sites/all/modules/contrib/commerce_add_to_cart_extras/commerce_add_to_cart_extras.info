@@ -1,0 +1,15 @@
+name = Commerce add to cart extras
+description = Provides additional ways of adding products to the cart.
+package = Commerce (contrib)
+core = 7.x
+dependencies[] = views
+dependencies[] = commerce_product
+
+files[] = commerce_add_to_cart_extras_handler_field_quantity.inc
+
+; Information added by drupal.org packaging script on 2011-12-13
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "commerce_add_to_cart_extras"
+datestamp = "1323734970"
+

@@ -1,0 +1,8 @@
+name = WKS add new task
+description = Module to generate new task after add conntent turn
+core = 7.x
+package = WKS
+php = 5.2.4
+version = 7.x-1.0-beta1
+project = wks_commerce
+dependencies[] = rules

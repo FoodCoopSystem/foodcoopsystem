@@ -1,0 +1,141 @@
+<?php
+/**
+ * @file
+ * Allows Radioactivity fields to increase energy when products are purchased.
+ *
+ * @todo Find out if it's safe to use $data['context']['entity'] for associated
+ *    Product Display.
+ */
+
+/**
+ * Whether Commerce Product Popularity should be active by default.
+ */
+define('COMMERCE_PRODUCTPOPULARITY_ACTIVE_DEFAULT', 0);
+
+/**
+ * Implements hook_entity_presave(). Adds Product Display information to line
+ * items, used for adding Radioactivity incidents.
+ */
+function commerce_productpopularity_entity_presave($entity, $type) {
+
+  // Only do this for line items we haven't already added details to.
+  if (($type == 'commerce_line_item') && !isset($entity->data['commerce_productpopularity'])) {
+  
+    $details = array();
+  
+    // Check if the line item has an associated Product Display.
+    if (isset($entity->data['context']['entity']['entity_type'])) {
+      $entity_type = $entity->data['context']['entity']['entity_type'];
+      if ($entity_type == 'node') {
+        
+        $active_instances = commerce_productpopularity_get_active_instances();
+        
+        // Early out if there are no active fields attached to this entity type.
+        if (!empty($active_instances[$entity_type])) {
+          
+          $nid = $entity->data['context']['entity']['entity_id'];
+          
+          // The product display's expected to already be in the entity
+          // controller's cache, so there shouldn't be a DB hit.
+          $nodes = entity_load($entity_type, array($nid));
+          
+          if ($nodes) {
+            $node_type = $nodes[$nid]->type;
+            
+            // Check if there's an active field on this bundle.
+            if (!empty($active_instances[$entity_type][$node_type])) {
+              // Store the necessary details to create an incident.
+              $details = array(
+                'entity_type' => $entity_type,
+                'bundle' => $node_type,
+                'entity_id' => $nid,
+              );
+            }
+          }
+        }
+      }
+    }
+    
+    $entity->data['commerce_productpopularity'] = $details;
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter() for field_ui_field_edit_form. Allows
+ * radioactivity fields to be configured to work with this module's checkout
+ * rules.
+ */
+function commerce_productpopularity_form_field_ui_field_edit_form_alter(&$form, &$form_state) {
+
+  $field = $form['#field'];
+  $instance = $form['#instance'];
+  
+  // Check this is a Radioactivity field on a product or a node.
+  if (($field['type'] == 'radioactivity') && in_array($instance['entity_type'], array('node', 'commerce_product'))) {
+  
+    if (isset($instance['settings']['commerce_productpopularity']['active'])) {
+      $value = $instance['settings']['commerce_productpopularity']['active'];
+    }
+    else {
+      $value = COMMERCE_PRODUCTPOPULARITY_ACTIVE_DEFAULT;
+    }
+    
+    $form['instance']['settings']['commerce_productpopularity']['active'] = array(
+      '#type' => 'checkbox',
+      '#title' => t("Update with Commerce Product Popularity"),
+      '#description' => t("Check this if you'd like the field to be handled by Commerce Product Popularity's checkout rule."),
+      '#default_value' => $value,
+    );
+  }
+}
+
+/**
+ * Implements hook_field_info_alter(). Adds a default value for the new setting.
+ *
+ * @see commerce_productpopularity_form_field_ui_field_edit_form_alter()
+ */
+function commerce_productpopularity_field_info_alter(&$info) {
+  // Modify the Radioactivity field's default instance settings to include our
+  // new 'active' setting.
+  $field_name = 'radioactivity';
+  if (isset($info[$field_name])) {
+    $info[$field_name]['instance_settings']['commerce_productpopularity']['active'] = COMMERCE_PRODUCTPOPULARITY_ACTIVE_DEFAULT;
+  }
+  else {
+    watchdog('commerce product popularity', 'Could not find Radioactivity (@field_name) field.', array('@field_name' => $field_name));
+  }
+}
+
+
+/**
+ * Returns a nested array of all fields configured to be active with this
+ * module keyed by entity and bundle name.
+ *
+ * @return array
+ *   Arrays of field names keyed first by entity name, then bundle name.
+ */
+function commerce_productpopularity_get_active_instances() {
+
+  // Iterate all fields to find those that are radioactivity and configured to
+  // use this module.
+
+  $fields = field_info_fields();
+  $active_instances = array();
+  
+  foreach ($fields as $field) {
+    if ($field['type'] == 'radioactivity') {
+      
+      foreach ($field['bundles'] as $entity_name => $bundles) {
+        foreach ($bundles as $bundle_name) {
+          $instance = field_info_instance($entity_name, $field['field_name'], $bundle_name);
+          if (!empty($instance['settings']['commerce_productpopularity']['active'])) {
+            $active_instances[$entity_name][$bundle_name][] = $field['field_name'];
+          }
+        }
+      }
+    }
+  }
+  
+  return $active_instances;
+}
+
