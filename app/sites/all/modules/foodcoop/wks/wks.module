@@ -8,3 +8,22 @@ include_once 'wks.features.inc';
 
 db_set_active('crm');
 db_set_active();
+
+/**
+ * Implements of hook_form_alter().
+ */
+function wks_form_alter(&$form, &$form_state, $form_id) {
+
+  
+  if ( 'views_exposed_form' == $form_id) {
+    
+    $form['submit']['#value'] = t('Filter');
+    
+//    $form['workflow']['upload_' . $form['type']['#value']] = array(
+//      '#type' => 'radios',
+//      '#title' => t('Attachments'),
+//      '#default_value' => variable_get('upload_' . $form['type']['#value'], 1),
+//      '#options' => array(t('Disabled'), t('Enabled')),
+//    );
+  }
+}

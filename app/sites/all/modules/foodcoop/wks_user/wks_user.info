@@ -1,9 +1,9 @@
 name = Wks User
 description = WKS users
 core = 7.x
-package = WKS
+package = FoodCoop System
 php = 5.2.4
-version = 7.x-1.0-beta9
+version = 7.x-1.0-beta8
 project = wks_user
 dependencies[] = commerce_customer
 dependencies[] = ctools

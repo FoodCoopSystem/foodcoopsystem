@@ -1,9 +1,9 @@
 name = Commerce VBO Views
 description = Views for use with Commerce
 core = 7.x
-package = WKS
+package = FoodCoop System
 php = 5.2.4
-version = 7.x-1.8
+version = 7.x-1.7-1
 project = commerce_vbo_views
 dependencies[] = rules
 dependencies[] = views

@@ -1,0 +1,5 @@
+name = FoodCoop packages
+description = Packages feature for FoodCoop system
+core = 7.x
+package = FoodCoop System
+files[] = fc_packages.module

@@ -1,9 +1,9 @@
 name = WKS Commerce
 description = Features and settings connected with commerce
 core = 7.x
-package = WKS
+package = FoodCoop System
 php = 5.2.4
-version = 7.x-1.0-beta41
+version = 7.x-1.0-beta40
 project = wks_commerce
 dependencies[] = addressfield
 dependencies[] = commerce

@@ -2773,7 +2773,7 @@ function wks_commerce_field_default_fields() {
       'locked' => '0',
       'module' => 'commerce_product_reference',
       'settings' => array(
-        'options_list_limit' => NULL,
+        'options_list_limit' => '',
       ),
       'translatable' => '0',
       'type' => 'commerce_product_reference',
@@ -2823,8 +2823,11 @@ function wks_commerce_field_default_fields() {
         'settings' => array(
           'fields' => array(),
           'type_settings' => array(
+            'allow_existing' => 1,
             'autogenerate_title' => 1,
-            'use_variation_language' => 0,
+            'delete_references' => 1,
+            'match_operator' => 'STARTS_WITH',
+            'use_variation_language' => 1,
           ),
         ),
         'type' => 'inline_entity_form',

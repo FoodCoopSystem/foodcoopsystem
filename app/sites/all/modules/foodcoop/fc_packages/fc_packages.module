@@ -1,0 +1,134 @@
+<?php
+
+function fc_packages_field_formatter_info() {
+  return array(
+    'field_package' => array(
+      'label' => t('Package'),
+      'field types' => array('number_integer'),
+    ),
+    'field_packages' => array(
+      'label' => t('Packages'),
+      'field types' => array('number_decimal', 'number_float'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function fc_packages_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+
+  //This gets the view_mode where our settings are stored
+  $display = $instance['display'][$view_mode];
+  //This gets the actual settings
+  $settings = $display['settings'];
+  //Initialize the element variable
+  $element = array();
+
+  //Add your select box
+  $element['tooltip'] = array(
+    '#type' => 'textfield', // Use a textbox
+    '#title' => t('Tool Tip'), // Widget label
+    '#description' => t('This text will appear when a user mouses over.'), // helper text
+    '#default_value' => $settings['tooltip'], // Get the value if it's already been set
+  );
+
+  $element['unit'] = array(
+    '#type' => 'textfield', // Use a textbox
+    '#title' => t('Unit'), // Widget label
+    '#description' => t('Weight unit.'), // helper text
+    '#default_value' => $settings['unit'], // Get the value if it's already been set
+  );
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function fc_packages_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+
+  $settings = $display['settings'];
+
+  $summary = t('Tooltip of status "@tooltip"', array(
+    '@tooltip' => $settings['tooltip'],
+      ));
+  return $summary;
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function fc_packages_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+
+  $element = array(); // Initialize the var.
+  $settings = $display['settings']; // get the settings.
+  $tooltip = $settings['tooltip']; // The tool tip assigned in settings.
+  $unit = $settings['unit']; // The tool tip assigned in settings.
+
+  if (!empty($items[0]['value'])) {
+    $package = $items[0]['value'];
+  }
+  else {
+    $package = 0;
+  }
+
+
+
+
+  $product_id = $entity->product_id;
+  $sku = $entity->sku;
+  $static = commerce_product_load($product_id);
+  $orders = db_query('SELECT order_id FROM commerce_order WHERE status = :status', array(':status' => 'cart'))->fetchAll();
+
+
+  $quants = '';
+
+  foreach ($orders as $order) {
+
+
+    $quant = db_query('SELECT SUM(`quantity` ) as qunt FROM commerce_line_item WHERE order_id = :order_id AND line_item_label = :sku', array(':order_id' => $order->order_id, ':sku' => $sku))->fetchAll();
+
+    if (!empty($quant[0]->qunt)) {
+
+      $quants[] .= $quant[0]->qunt;
+    }
+  }
+
+  $sum = 0;
+
+  if (!empty($quants[1])) {
+    $sum = array_sum($quants);
+  }
+  else {
+    if (!empty($quants))
+      $sum = $quants[0];
+  }
+
+  if ($sum > 0 && $package > 0) {
+
+    $division = $sum / $package;
+
+    $packages = floor($division);
+    $rest_division = $division - $packages;
+    $progress = $rest_division * 100;
+  }
+  else {
+    $progress = 0;
+    $packages = 0;
+  }
+
+
+  $html = '<div class="progress"><a title="' . $tooltip . ' ' . $sum . '/'
+      . $package . $unit . ' (' . $packages . ' pełnych)" class="100" href="#"> 
+       
+    <div class="s100" style="width:' . $progress . '%;"></div></a>
+    </div>';
+
+
+
+  $element[0]['#markup'] = $html; // Assign it to the #markup of the element
+
+  return $element;
+}

@@ -1571,12 +1571,21 @@ return $proc;
   $handler->display->display_options['fields']['field_paczka']['table'] = 'field_data_field_paczka';
   $handler->display->display_options['fields']['field_paczka']['field'] = 'field_paczka';
   $handler->display->display_options['fields']['field_paczka']['relationship'] = 'field_nowy_produkt_product_id';
+  $handler->display->display_options['fields']['field_paczka']['label'] = '';
+  $handler->display->display_options['fields']['field_paczka']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['field_paczka']['element_label_colon'] = FALSE;
+  $handler->display->display_options['fields']['field_paczka']['settings'] = array(
+    'thousand_separator' => ' ',
+    'prefix_suffix' => 1,
+  );
   /* Pole: Commerce Product: Quantity input field */
   $handler->display->display_options['fields']['add_to_cart_quantity']['id'] = 'add_to_cart_quantity';
   $handler->display->display_options['fields']['add_to_cart_quantity']['table'] = 'commerce_product';
   $handler->display->display_options['fields']['add_to_cart_quantity']['field'] = 'add_to_cart_quantity';
   $handler->display->display_options['fields']['add_to_cart_quantity']['relationship'] = 'field_nowy_produkt_product_id';
+  $handler->display->display_options['fields']['add_to_cart_quantity']['label'] = '';
   $handler->display->display_options['fields']['add_to_cart_quantity']['exclude'] = TRUE;
+  $handler->display->display_options['fields']['add_to_cart_quantity']['element_label_colon'] = FALSE;
   $handler->display->display_options['fields']['add_to_cart_quantity']['default_quantity'] = '0';
   $handler->display->display_options['fields']['add_to_cart_quantity']['combine'] = 1;
   $handler->display->display_options['fields']['add_to_cart_quantity']['display_path'] = 0;
@@ -1621,7 +1630,6 @@ return $proc;
 <div id="product-tags">[field_tagi]</div>
 <div id="product-quantity">[add_to_cart_quantity]</div>
 <div id="product-type">[type]</div>
-[field_paczka] 
 </div>
 <div id="like-flag">[ops]</div>';
   $handler->display->display_options['fields']['nothing']['element_label_colon'] = FALSE;
@@ -1706,8 +1714,6 @@ return $proc;
     t('Produkt'),
     t('flag'),
     t('opis'),
-    t('Paczka'),
-    t('Quantity input field'),
     t('<div id="product">
 <div id="product-name">[title]</div>
 <div id="product-body">[field_opis]</div>
@@ -1716,7 +1722,6 @@ return $proc;
 <div id="product-tags">[field_tagi]</div>
 <div id="product-quantity">[add_to_cart_quantity]</div>
 <div id="product-type">[type]</div>
-[field_paczka] 
 </div>
 <div id="like-flag">[ops]</div>'),
     t('Wszystkie'),

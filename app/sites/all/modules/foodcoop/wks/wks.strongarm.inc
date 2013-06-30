@@ -37,7 +37,7 @@ function wks_strongarm() {
   $strongarm->name = 'features_codecache';
   $strongarm->value = array(
     'wks' => array(
-      'variable' => '35ad2e5c4b0c14190530a1b9ddeebb09',
+      'variable' => 'f0045d0e74afd4a961ea6ddc738e76ce',
       'language' => '72ec5c792f1199b3ebeed17b43e3ef0e',
       'dependencies' => 'e98c2ec29acbaacecaa13c25b2bd15c7',
       'user_role' => '97970ace8410bc214d1d247b0224957b',
@@ -60,14 +60,14 @@ function wks_strongarm() {
       'rules_config' => '27c7e0aa0fc4cda0e950f8b4a27d8f23',
     ),
     'wks_commerce' => array(
-      'variable' => '46d26e9f58d272cb1c6e95be6a364f15',
-      'field' => '23c62d0cbe4bec9112caeb43c3ee1113',
+      'variable' => '95c78aa85d41e8710abff8b168d8c38a',
+      'field' => 'af1301b03f6384ff389a58fd136f5b51',
       'taxonomy' => '2c7c13ce461231c82dfc1efa66e6aac6',
       'user_permission' => FALSE,
-      'dependencies' => '1fb665b2ded32113d6668ffa0a5dad79',
+      'dependencies' => 'b21bbc136f1a52535bea9267edc01d3c',
       'node' => 'b2bc88ba527143345cb87eba633da28c',
       'views_view' => '86395f05b775d18efeb9f2530801c8ac',
-      'commerce_product_type' => '0f423c809866d0304d158fae244a072a',
+      'commerce_product_type' => '6af35d250f51ccbef13647333a55602a',
       'rules_config' => 'effb7102ad824608ca9b411404d4f5a5',
       'quicktabs' => '597c1a5537571d38ae218e69f87dc247',
       'commerce_decimal_quantities' => '63447ef99a728f6a3657a1f2dcbef043',
@@ -86,7 +86,7 @@ function wks_strongarm() {
     ),
     'wks_turn' => array(
       'dependencies' => '122a49cb3423e13b9330b957f864b76a',
-      'variable' => '845f66697302f151912a1f0b596a654e',
+      'variable' => 'd3d98cd6c665f7f7bc920f679a470785',
       'field' => '7a8eafcb33aa9f3df0e65c8a5f4f2309',
       'node' => '78d8fadcb27d728457802ab1a380df54',
       'views_view' => 'd3209405bdb32c74d430167041b2eacb',
@@ -102,7 +102,7 @@ function wks_strongarm() {
     ),
     'wks_user' => array(
       'dependencies' => '120667674fb1397ad7f33526b4c93207',
-      'field' => 'ae566ed92e9b1bf024c54bdb490492a8',
+      'field' => '05a9d54acd3f12e2fe6f280a39209b94',
       'field_group' => 'dbb24e87e55559cb7182c840c9344749',
       'rules_config' => '04fd51d5555b93aaeb863b9b4cf33cb1',
     ),
@@ -382,7 +382,7 @@ Zostań członkiem [site:name], kliknij poniższy link by aktywować konto.
     'domain' => '',
     'prefix' => 'pl',
     'weight' => '0',
-    'javascript' => 'n4LLljD7cyctEZ-aMcQ5haXgVTR5OowiRg160zDdaeE',
+    'javascript' => 'r5EE5hWj0bqjT8CqqdqBsnSRp9mLOw1JXebshKIp6L4',
   );
   $export['language_default'] = $strongarm;
 

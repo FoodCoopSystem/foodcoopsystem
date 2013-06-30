@@ -1,9 +1,9 @@
 name = WKS Turn
 description = Turn and cases
 core = 7.x
-package = WKS
+package = FoodCoop System
 php = 5.2.4
-version = 7.x-1.0-beta15
+version = 7.x-1.0-beta14
 project = wks_turn
 dependencies[] = context
 dependencies[] = date
