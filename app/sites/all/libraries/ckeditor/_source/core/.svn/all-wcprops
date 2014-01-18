@@ -1,0 +1,167 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/!svn/ver/7692/CKEditor/releases/stable/_source/core
+END
+editor.js
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/editor.js
+END
+skins.js
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/skins.js
+END
+commanddefinition.js
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/commanddefinition.js
+END
+editor_basic.js
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/editor_basic.js
+END
+env.js
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/env.js
+END
+scriptloader.js
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/scriptloader.js
+END
+eventInfo.js
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/eventInfo.js
+END
+ckeditor_base.js
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/ckeditor_base.js
+END
+tools.js
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/tools.js
+END
+ckeditor.js
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/ckeditor.js
+END
+ckeditor_basic.js
+K 25
+svn:wc:ra_dav:version-url
+V 70
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/ckeditor_basic.js
+END
+config.js
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/config.js
+END
+loader.js
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/loader.js
+END
+plugindefinition.js
+K 25
+svn:wc:ra_dav:version-url
+V 72
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/plugindefinition.js
+END
+dataprocessor.js
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/dataprocessor.js
+END
+focusmanager.js
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/focusmanager.js
+END
+dtd.js
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/dtd.js
+END
+_bootstrap.js
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/_bootstrap.js
+END
+ui.js
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/ui.js
+END
+command.js
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/command.js
+END
+dom.js
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/dom.js
+END
+event.js
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/event.js
+END
+htmlparser.js
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/htmlparser.js
+END
+lang.js
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/lang.js
+END
+plugins.js
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/plugins.js
+END
+resourcemanager.js
+K 25
+svn:wc:ra_dav:version-url
+V 71
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/resourcemanager.js
+END
+themes.js
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/!svn/ver/7692/CKEditor/releases/stable/_source/core/themes.js
+END

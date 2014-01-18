@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/!svn/ver/7692/CKEditor/releases/stable/_samples/adobeair
+END
+run.bat
+K 25
+svn:wc:ra_dav:version-url
+V 65
+/!svn/ver/7692/CKEditor/releases/stable/_samples/adobeair/run.bat
+END
+run.sh
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/!svn/ver/7692/CKEditor/releases/stable/_samples/adobeair/run.sh
+END
+application.xml
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/!svn/ver/7692/CKEditor/releases/stable/_samples/adobeair/application.xml
+END
+sample.html
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/!svn/ver/7692/CKEditor/releases/stable/_samples/adobeair/sample.html
+END

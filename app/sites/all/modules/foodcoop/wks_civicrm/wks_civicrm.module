@@ -1,7 +1,0 @@
-<?php
-/**
- * @file
- * Code for the WKS CiviCRM feature.
- */
-
-include_once 'wks_civicrm.features.inc';
