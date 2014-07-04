@@ -14,7 +14,7 @@ before_script:
   - pyrus install drush/drush
   - phpenv rehash
   - drush --yes si testing --db-url=mysql://root:@localhost/foodcoopsystem
-  - drush en simpletest
+  - drush --yes en simpletest
   - drush runserver 127.0.0.1:8080 &
   - until netstat -an 2>/dev/null | grep '8080.*LISTEN'; do true; done
 
