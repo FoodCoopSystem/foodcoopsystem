@@ -1,17 +1,21 @@
 language: php
 php:
   - 5.4
+  - 5.3
 
 mysql:
   database: foodcoopsystem
   username: root
 
 before_script:
+  - cd app
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
-  - drush --yes make foodcoopsystem.make
   - drush --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
+  - zcat ../database/foodcoop.sql.gz|drush sql-cli -
   - drush cc all
-
+script:
+  - ../build/php_lint.sh
+  - drush status
 
