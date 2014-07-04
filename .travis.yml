@@ -12,7 +12,7 @@ before_script:
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
-  - drush --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
+  - php -d sendmail_path=`which true` ~/.composer/vendor/bin/drush.php --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
   - zcat ../database/foodcoop.sql.gz|drush sql-cli -
   - drush cc all
 script:
