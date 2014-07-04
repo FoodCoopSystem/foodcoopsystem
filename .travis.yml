@@ -8,11 +8,12 @@ mysql:
   username: root
 
 before_script:
+  - echo 'sendmail_path = /bin/true' >> ~/.phpenv/versions/$(phpenv version-name)/etc/conf.d/travis.ini
   - cd app
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
-  - php -d sendmail_path=`which true` ~/.composer/vendor/bin/drush.php --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
+  - drush --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
   - zcat ../database/foodcoop.sql.gz|drush sql-cli -
   - drush cc all
 script:
