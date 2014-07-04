@@ -13,10 +13,12 @@ before_script:
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
-  - drush --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
-  - zcat ../database/foodcoop.sql.gz|drush sql-cli -
-  - drush cc all
+  - drush --yes si testing --db-url=mysql://root:@localhost/foodcoopsystem
+  - drush en simpletest
+  - drush runserver 127.0.0.1:8080 &
+  - until netstat -an 2>/dev/null | grep '8080.*LISTEN'; do true; done
+
 script:
+  - drush test-run 'Module' --uri=http://127.0.0.1:8080
   - ../build/php_lint.sh
-  - drush status
 
