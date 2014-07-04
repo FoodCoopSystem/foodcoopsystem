@@ -10,8 +10,7 @@ before_script:
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
-  - drush dl --yes drupal
-  - cd drupal-*
+  - drush --yes make foodcoopsystem.make
   - drush --yes si standard --db-url=mysql://root:@localhost/foodcoopsystem
   - drush cc all
 
