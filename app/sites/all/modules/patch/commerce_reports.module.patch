@@ -1,7 +1,7 @@
 diff --git a/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module b/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module
 index de2c118..dd62457 100755
---- a/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module
-+++ b/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module
+--- a/commerce_reports.module
++++ b/commerce_reports.module
 @@ -75,9 +75,9 @@
      'commerce_reports_customers' => array(
        'info' => t('Commerce Reports: Customer statistics'),
