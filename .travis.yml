@@ -13,6 +13,7 @@ before_script:
   - pyrus channel-discover pear.drush.org
   - pyrus install drush/drush
   - phpenv rehash
+  - drush --yes make foodcoopsystem.make
   - drush --yes si testing --db-url=mysql://root:@localhost/foodcoopsystem
   - drush --yes en simpletest
   - drush runserver 127.0.0.1:8080 &
