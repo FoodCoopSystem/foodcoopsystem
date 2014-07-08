@@ -16,6 +16,10 @@ before_script:
   - drush --yes make foodcoopsystem.make
   - drush --yes si testing --db-url=mysql://root:@localhost/foodcoopsystem
   - drush --yes en simpletest
+  - drush --yes dis entitycache
+  - drush --yes pm-uninstall
+  - drush --yes dl registry_rebuild
+  - drush --yes rr
   - drush runserver 127.0.0.1:8080 &
   - until netstat -an 2>/dev/null | grep '8080.*LISTEN'; do true; done
 
