@@ -1,69 +1,28 @@
-diff --git a/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module b/crm/sites/all/modules/contrib/commerce_reports/commerce_reports.module
-index de2c118..dd62457 100755
+diff --git a/commerce_reports.module b/commerce_reports.module
+index 1ed99d0..626c40e 100755
 --- a/commerce_reports.module
 +++ b/commerce_reports.module
-@@ -75,9 +75,9 @@
+@@ -75,9 +75,9 @@ function commerce_reports_block_info() {
      'commerce_reports_customers' => array(
        'info' => t('Commerce Reports: Customer statistics'),
      ),
 -    'commerce_reports_customer_map' => array(
 -      'info' => t('Commerce Reports: Customer map'),
 -    ),
-+  //  'commerce_reports_customer_map' => array(
-+  //    'info' => t('Commerce Reports: Customer map'),
-+  //  ),
++//    'commerce_reports_customer_map' => array(
++//     'info' => t('Commerce Reports: Customer map'),
++//    ),
    );
  }
  
-@@ -94,8 +94,8 @@
+@@ -94,8 +94,8 @@ function commerce_reports_block_view($delta = '') {
        return commerce_reports_sales();
      case 'commerce_reports_customers':
        return commerce_reports_customers();
 -    case 'commerce_reports_customer_map':
 -      return commerce_reports_customer_map();
-+  //  case 'commerce_reports_customer_map':
-+  //    return commerce_reports_customer_map();
++//    case 'commerce_reports_customer_map':
++//      return commerce_reports_customer_map();
    }
  }
  
-@@ -252,25 +252,29 @@
-         'title' => t('Sales reports'),
-         'path' => 'admin/commerce/reports/sales',
-       ),
--      'sections' => array(
-+     'sections' => array(
-         'year' => array(
-           'title' => 'Year',
-           'module' => 'views',
-           'block' => 'cc437fbe6b867b448dc946fd925800a3',
-         ),
--        'month' => array(
-+    
-+   /**  'month' => array(
-           'title' => 'Month',
-           'module' => 'views',
-           'block' => '1127e4706efe2c1eb8537a65a644e572',
-         ),
--        'week' => array(
-+     'week' => array(
-           'title' => 'Week',
-           'module' => 'views',
-           'block' => 'd70fc459675538d56c73a9f90574211a',
-         ),
-+      * 
-+      */
-       ),
-       'weight' => 100,
-     ),
-+ 
-     'customers' => array(
-       'title' => t('Customers'),
-       'report' => array(
-@@ -285,6 +289,7 @@
-       ),
-       'weight' => 200,
-     ),
-+ 
-     'products' => array(
-       'title' => t('Products'),
-       'switchSections' => TRUE,

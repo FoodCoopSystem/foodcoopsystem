@@ -8,6 +8,13 @@ projects[drupal][version] = "7.22"
 projects[views_bulk_operations][subdir] = "contrib"
 projects[views_bulk_operations][version] = "3.1"
 
+projects[advanced_forum][subdir] = "contrib"
+projects[advanced_forum][version] = "2.3"
+
+
+projects[boxes][subdir] = "contrib"
+projects[boxes][version] = "1.0"
+
 projects[addressfield][subdir] = "contrib"
 projects[addressfield][version] = "1.0-beta3"
 
@@ -26,17 +33,60 @@ projects[ctools][version] = "1.3"
 projects[commerce][subdir] = "contrib"
 projects[commerce][version] = "1.6"
 
+projects[commerce_custom_order_status][subdir] = "contrib"
+projects[commerce_custom_order_status][version] = "1.0"
+
+
+projects[commerce_custom_product][subdir] = "contrib"
+projects[commerce_custom_product][version] = "1.0-beta2"
+
+projects[commerce_flat_rate][subdir] = "contrib"
+projects[commerce_flat_rate][version] = "1.0-beta1"
+
+projects[commerce_product_bundle][subdir] = "contrib"
+projects[commerce_product_bundle][version] = "1.0-alpha6"
+
+projects[commerce_productpopularity][subdir] = "contrib"
+projects[commerce_productpopularity][version] = "1.0-alpha1"
+
+
+projects[commerce_add_to_cart_extras][download][type] = "git"
+projects[commerce_add_to_cart_extras][download][url] = "http://git.drupal.org/project/commerce_add_to_cart_extras.git"
+projects[commerce_add_to_cart_extras][download][branch] = "7.x-1.x"
+projects[commerce_add_to_cart_extras][download][revision] = "c3d0ed2882508d6c97f62ee50a858a8bc3933ceb"
 projects[commerce_add_to_cart_extras][subdir] = "contrib"
-projects[commerce_add_to_cart_extras][version] = "1.x-dev"
 
 projects[commerce_autosku][subdir] = "contrib"
 projects[commerce_autosku][version] = "1.1"
+
+projects[calendar][subdir] = "contrib"
+projects[calendar][version] = "3.4"
+
+projects[ckeditor][subdir] = "contrib"
+projects[ckeditor][version] = "1.13"
+
+projects[drupalforfirebug][subdir] = "developer"
+projects[drupalforfirebug][version] = "1.3"
+
+projects[coder][subdir] = "developer"
+projects[coder][version] = "1.0"
+
+projects[devel][subdir] = "developer"
+projects[devel][version] = "1.3"
+
+projects[hacked][subdir] = "developer"
+projects[hacked][version] = "2.0-beta4"
+
+projects[performance][subdir] = "developer"
+projects[performance][version] = "1.6"
 
 
 ;projects[commerce_decimal_quantities][patch][] = "sites/all/modules/patch/commerce_decimal_quantities-module.patch"
 projects[commerce_decimal_quantities][subdir] = "contrib"
 projects[commerce_decimal_quantities][version] = "1.0"
 
+; TODO: Document this
+projects[commerce_extra][patch][] = "sites/all/modules/patch/commerce_extra_changes.patch"
 projects[commerce_extra][subdir] = "contrib"
 projects[commerce_extra][version] = "1.0-alpha1"
 
@@ -54,11 +104,18 @@ projects[commerce_shipping][version] = "1.1"
 projects[commerce_stock][subdir] = "contrib"
 projects[commerce_stock][version] = "1.1"
 
+projects[customer_profile_type_ui][subdir] = "contrib"
+projects[customer_profile_type_ui][version] = "1.0-alpha1"
+
 ;projects[commerce_vbo_views][subdir] = "foodcoop"
 ;projects[commerce_vbo_views][version] = "1.7-1"
 
 projects[content_access][subdir] = "contrib"
 projects[content_access][version] = "1.2-beta2"
+
+
+projects[cookie_cache_bypass_adv][subdir] = "contrib"
+projects[cookie_cache_bypass_adv][version] = "1.1"
 
 projects[context][subdir] = "contrib"
 projects[context][version] = "3.0-beta6"
@@ -76,14 +133,32 @@ projects[entitycache][subdir] = "contrib"
 projects[entitycache][version] = "1.1"
 projects[entitycache][patch][] = "https://www.drupal.org/files/entitycache-testcase-renaming.patch"
 
+projects[entity][subdir] = "contrib"
+projects[entity][version] = "1.0"
+
+projects[entityreference][subdir] = "contrib"
+projects[entityreference][version] = "1.0-rc3"
+
 projects[features][subdir] = "contrib"
 projects[features][version] = "1.0"
 
 projects[field_group][subdir] = "contrib"
 projects[field_group][version] = "1.1"
 
+projects[field_permissions][subdir] = "contrib"
+projects[field_permissions][version] = "1.0-beta2"
+
+projects[field_reference][subdir] = "contrib"
+projects[field_reference][version] = "1.0"
+
 projects[flag][subdir] = "contrib"
 projects[flag][version] = "2.0"
+
+projects[flag_limit][subdir] = "contrib"
+projects[flag_limit][version] = "1.0-alpha1"
+
+projects[jstimer][subdir] = "contrib"
+projects[jstimer][version] = "1.3"
 
 projects[fpa][subdir] = "contrib"
 projects[fpa][version] = "2.2"
@@ -104,11 +179,23 @@ projects[legal][version] = "1.4"
 projects[libraries][subdir] = "contrib"
 projects[libraries][version] = "1.0"
 
+projects[l10n_update][subdir] = "contrib"
+projects[l10n_update][version] = "1.0-beta3"
+
 projects[logintoboggan][subdir] = "contrib"
 projects[logintoboggan][version] = "1.3"
 
+projects[memcache][subdir] = "contrib"
+projects[memcache][version] = "1.0"
+
 projects[references][subdir] = "contrib"
 projects[references][version] = "2.1"
+
+projects[node_export][subdir] = "contrib"
+projects[node_export][version] = "3.0-rc4"
+
+projects[nodereference_url][subdir] = "contrib"
+projects[nodereference_url][contrib] = "1.12"
 
 projects[pathauto][subdir] = "contrib"
 projects[pathauto][version] = "1.2"
@@ -119,6 +206,7 @@ projects[print][version] = "1.2"
 ;projects[quicktabs][patch][] = "sites/all/modules/patch/quicktab.css.path"
 ;projects[quicktabs][patch][http://www.setasign.com/supra/kon2_dl/39034/FPDI-1.4.2.zip] = "sites/all/modules/patch/quicktabs_tabstyle"
 ;projects[quicktabs][patch][] = "sites/all/modules/patch/wkstabstyle.css-2"
+projects[quicktabs][patch][] = "sites/all/modules/patch/quicktabs_styles.patch"
 projects[quicktabs][subdir] = "contrib"
 projects[quicktabs][version] = "3.4"
 
@@ -127,6 +215,15 @@ projects[role_expire][version] = "1.0-beta2"
 
 projects[rules][subdir] = "contrib"
 projects[rules][version] = "2.3"
+
+projects[rules_forms][subdir] = "contrib"
+projects[rules_forms][version] = "1.0-rc2"
+
+projects[uuid][subdir] = "contrib"
+projects[uuid][download][type] = "git"
+projects[uuid][download][url] = "http://git.drupal.org/project/uuid.git"
+projects[uuid][download][revision] = "806c3011accaa93a835b6d0849b3dfde04c9e139"
+projects[uuid][download][branch] = "7.x-1.x"
 
 projects[strongarm][subdir] = "contrib"
 projects[strongarm][version] = "2.0"
@@ -147,17 +244,33 @@ projects[views][version] = "3.7"
 projects[views_pdf][subdir] = "contrib"
 projects[views_pdf][version] = "1.0"
 
+
+projects[rules_link][subdir] = "contrib"
+projects[rules_link][version] = "1.0-beta3"
+
 projects[views_calc][subdir] = "contrib"
 projects[views_calc][version] = "1.0"
 
+projects[views_php][download][type] = "git"
+projects[views_php][download][url] = "http://git.drupal.org/project/views_php.git"
+projects[views_php][download][branch] = "7.x-1.x"
+projects[views_php][download][revision] = "2b5ed52228394ee3c8e8c86be283da957cdfa6f6"
 projects[views_php][subdir] = "contrib"
-projects[views_php][version] = "1.x-dev"
 
 projects[visualization][subdir] = "contrib"
 projects[visualization][version] = "1.0-alpha1"
 
 projects[webform][subdir] = "contrib"
 projects[webform][version] = "3.18"
+
+projects[webform_conditional][subdir] = "contrib"
+projects[webform_conditional][version] = "1.0-beta1"
+
+projects[webform_rules][subdir] = "contrib"
+projects[webform_rules][version] = "1.4"
+
+projects[webform_validation][subdir] = "contrib"
+projects[webform_validation][version] = "1.1"
 
 
 ; Themes
@@ -191,15 +304,15 @@ libraries[fpdi][type] = "library"
 
 ; Please fill the following out. Type may be one of get, git, bzr or svn,
 ; and url is the url of the download.
-libraries[tcpdf][download][type] = "get"
-libraries[tcpdf][download][url] = "http://sourceforge.net/projects/tcpdf/files/latest/download?source=files"
+libraries[tcpdf][download][type] = "git"
+libraries[tcpdf][download][url] = "git://git.code.sf.net/p/tcpdf/code"
+libraries[tcpdf][download][tag] = "6.0.088"
 libraries[tcpdf][directory_name] = "tcpdf"
 libraries[tcpdf][type] = "library"
 
-; Please fill the following out. Type may be one of get, git, bzr or svn,
-; and url is the url of the download.
-libraries[ckeditor][download][type] = "http://download.cksource.com/CKEditor/CKEditor/CKEditor%204.4.2/ckeditor_4.4.2_standard.zip"
-libraries[ckeditor][download][url] = ""
+
+libraries[ckeditor][download][type]= "get"
+libraries[ckeditor][download][url] = "http://download.cksource.com/CKEditor/CKEditor/CKEditor%204.0.2/ckeditor_4.0.2_standard.zip"
 libraries[ckeditor][directory_name] = "ckeditor"
-libraries[ckeditor][type] = "library"
+libraries[ckeditor][destination] = "libraries"
 
