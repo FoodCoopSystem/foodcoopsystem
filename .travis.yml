@@ -23,3 +23,5 @@ script:
   - drush test-run 'Module' --uri=http://127.0.0.1:8080
   - ../build/php_lint.sh
 
+matrix:
+  fast_finish: true
