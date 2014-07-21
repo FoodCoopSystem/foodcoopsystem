@@ -1,7 +1,7 @@
-diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+diff --git a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 index 092fc09..bc28753 100755
---- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
-+++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+--- a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
++++ b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 @@ -18,7 +18,7 @@
      border: 2px solid #61c523;
      border-radius: 10px;

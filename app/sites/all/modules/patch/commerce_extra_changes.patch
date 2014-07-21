@@ -1,0 +1,50 @@
+diff --git a/modules/address_populate/commerce_extra_address_populate.module b/modules/address_populate/commerce_extra_address_populate.module
+index 98af41e..5bcccf3 100644
+--- a/modules/address_populate/commerce_extra_address_populate.module
++++ b/modules/address_populate/commerce_extra_address_populate.module
+@@ -62,7 +62,12 @@ function commerce_extra_address_populate_field_attach_form($entity_type, $entity
+ 
+       // Get user address field which contains default values
+       $settings = variable_get('commerce_extra_address_populate_settings', array());
+-      $user_address_field = isset($settings[$form['#parents'][0]]) ? $settings[$form['#parents'][0]] : '';
++      $user_address_field = '';
++      if (isset($form['#parents'][0])) {
++        if (isset($settings[$form['#parents'][0]])) {
++          $user_address_field = $settings[$form['#parents'][0]];
++        }
++      }
+       if (!empty($user_address_field)) {
+         global $user;
+         $user_fields = user_load($user->uid);
+diff --git a/modules/quantity/commerce_extra_quantity.js b/modules/quantity/commerce_extra_quantity.js
+index 141717c..5b158d3 100644
+--- a/modules/quantity/commerce_extra_quantity.js
++++ b/modules/quantity/commerce_extra_quantity.js
+@@ -18,12 +18,12 @@
+     }
+ 
+     // Set new quantity
+-    if (new_quantity >= 1) {
++    if (new_quantity >= 0) {
+       $(selector).val(new_quantity);
+     }
+ 
+     // Set disabled class depending on new quantity
+-    if (new_quantity <= 1) {
++    if (new_quantity <= 0) {
+       $(selector).prev('span').addClass('commerce-quantity-plusminus-link-disabled');
+     }
+     else {
+diff --git a/modules/quantity/commerce_extra_quantity.module b/modules/quantity/commerce_extra_quantity.module
+index 609f79b..5412c7c 100644
+--- a/modules/quantity/commerce_extra_quantity.module
++++ b/modules/quantity/commerce_extra_quantity.module
+@@ -77,7 +77,7 @@ function theme_quantity_plusminus_link($variables) {
+       $js_callback = "Drupal.commerce_extra_quantity_quantity('#" . $variables['quantity_input_element'] . "', " . $variables['way'] . ")";
+       break;
+   }
+-  if ($variables['quantity'] <= 1) {
++  if ($variables['quantity'] <= 0) {
+     $class .= ' commerce-quantity-plusminus-link-disabled';
+   }
+   $options = array(

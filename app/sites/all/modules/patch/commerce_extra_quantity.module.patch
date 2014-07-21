@@ -1,7 +1,7 @@
-diff --git a/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module b/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
+diff --git a/modules/quantity/commerce_extra_quantity.module b/modules/quantity/commerce_extra_quantity.module
 index 609f79b..15f9727 100644
---- a/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
-+++ b/crm/sites/all/modules/contrib/commerce_extra/modules/quantity/commerce_extra_quantity.module
+--- a/modules/quantity/commerce_extra_quantity.module
++++ b/modules/quantity/commerce_extra_quantity.module
 @@ -28,6 +28,7 @@
      if (isset($form['edit_quantity'])) {
        $form['#attached']['js'][] = drupal_get_path('module', 'commerce_extra_quantity') . '/commerce_extra_quantity.js';

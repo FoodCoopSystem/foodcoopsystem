@@ -1,14 +1,14 @@
-diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+diff --git a/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png b/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
 similarity index 100%
-rename from crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
-rename to crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
---- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
-+++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+rename from quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
+rename to quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
+--- a/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active.png
++++ b/quicktabs_tabstyles/tabstyles/wkstabstyle/images/active-t.png
 Binary files differ
-diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+diff --git a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 index 9b4dce3..f05a701 100755
---- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
-+++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+--- a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
++++ b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 @@ -1,17 +1,17 @@
  
  .quicktabs_main.quicktabs-style-wkstabstyle{
