@@ -51,4 +51,4 @@ app/sites/all/modules/developer/
 app/sites/example.sites.php
 
 # Additional ignore
-/nbproject/private/
+nbproject/
