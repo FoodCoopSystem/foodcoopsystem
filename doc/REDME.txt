@@ -1,9 +1,7 @@
 Login credentials:
 
-User:Admin
-Pass:FoodCoop13
-
+User: admin
+Pass: admin
 
 Config stored:
 conf/settings/settings.php
-
