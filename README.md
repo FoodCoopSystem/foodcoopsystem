@@ -1,4 +1,4 @@
-foodcoopsystem
+Food Coop System
 ==============
 
 [![Build Status](https://travis-ci.org/FoodCoopSystem/foodcoopsystem.svg)](https://travis-ci.org/FoodCoopSystem/foodcoopsystem)
