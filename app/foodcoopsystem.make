@@ -193,6 +193,7 @@ projects[quicktabs][patch][0] = "sites/all/modules/patch/quicktabs_styles.patch"
 projects[quicktabs][subdir] = "contrib"
 projects[quicktabs][version] = "3.6"
 
+projects[role_expire][patch][0] = "sites/all/modules/patch/0001-Issue-1442936-by-MacMladen-Removes-call-by-reference.patch"
 projects[role_expire][subdir] = "contrib"
 projects[role_expire][version] = "1.0-beta2"
 
