@@ -1,8 +1,13 @@
-Food Coop System
+FoodCoop System
 ==============
+![FoodCoopSystem](http://www.foodcoop.pl/images/logo.png)
 
 [![Build Status](https://travis-ci.org/FoodCoopSystem/foodcoopsystem.svg)](https://travis-ci.org/FoodCoopSystem/foodcoopsystem)
 
- Group ordering and billing system based on Drupal 7. Founded by UNDP, developed by Obin.org and RatioWeb.pl for Warsaw FoodCoop, still in active development. 
+FoodCoop System is an open source group ordering and billing system based on Drupal Commerce (Drupal 7) and PHP language.
+
+Main goal of a project is build easy to install platform for (not only Polish) food cooperatives, to help manage orders, stock, tasks and members.
+
+ First version of the system was founded in 2013 by UNDP for Warsaw Food Cooperative and was developed by Obin.org and RatioWeb.pl members. 
  
- It will be Open Source platform for Polish foodcoop's and general base for other foodcoop's that whant to manage their stock and members. If you want to help us, say hello by mail: wsparcie(at)obin.org or on channel #obin.org into https://chat.indymedia.org Instruction of system and documentation will be avalible here: http://foodcoop.pl/  
+  If you want to help us, say hello by mail: contact(at)foodcoop.pl. Instruction of system and documentation will be avalible here: http://foodcoop.pl/  
