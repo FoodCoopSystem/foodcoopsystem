@@ -1,0 +1,26 @@
+From dbd7886beedbc879e78870388a55b3aef149e589 Mon Sep 17 00:00:00 2001
+From: MacMladen <MacMladen@207301.no-reply.drupal.org>
+Date: Wed, 8 Aug 2012 14:34:55 +0100
+Subject: [PATCH] Issue #1442936 by MacMladen : Removes call by reference
+ problem.
+
+---
+ role_expire.views.inc | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/role_expire.views.inc b/role_expire.views.inc
+index c089304..7e3de0e 100644
+--- a/role_expire.views.inc
++++ b/role_expire.views.inc
+@@ -84,7 +84,7 @@ class role_expire_handler_field_rid extends views_handler_field {
+ 
+   // Derived from views_handler_field_user_roles
+   // Purpose: get the *names* that correspond to the role_expire_rids.
+-  function pre_render($values) {
++  function pre_render(&$values) {
+     $roles = array();
+     $this->items = array();
+ 
+-- 
+1.9.1
+
