@@ -1,7 +1,7 @@
 diff --git a/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module b/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
 index 4e2a776..0c8c051 100755
---- a/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
-+++ b/crm/sites/all/modules/contrib/commerce_decimal_quantities/commerce_decimal_quantities.module
+--- a/commerce_decimal_quantities.module
++++ b/commerce_decimal_quantities.module
 @@ -68,11 +68,16 @@
    // As we don't have 'default_product' in form_state what we need to get
    // commerce_decimal_quantities setting is to load product by id,

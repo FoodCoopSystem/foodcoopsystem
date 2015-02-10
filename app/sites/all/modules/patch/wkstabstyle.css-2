@@ -1,9 +1,9 @@
-diff --git a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+diff --git a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 old mode 100755
 new mode 100644
 index f05a701..092fc09
---- a/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
-+++ b/crm/sites/all/modules/contrib/quicktabs/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
+--- a/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
++++ b/quicktabs_tabstyles/tabstyles/wkstabstyle/wkstabstyle.css
 @@ -35,19 +35,19 @@
  }
  ul.quicktabs-tabs.quicktabs-style-wkstabstyle li:hover a{
