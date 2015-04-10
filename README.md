@@ -11,3 +11,13 @@ Main goal of a project is build easy to install platform for (not only Polish) f
  First version of the system was founded in 2013 by UNDP for Warsaw Food Cooperative and was developed by Obin.org and RatioWeb.pl members. 
  
   If you want to help us, say hello by mail: contact(at)foodcoop.pl. Instruction of system and documentation will be avalible here: http://foodcoop.pl/  
+
+
+Installation
+==============
+
+Application use Drush Make (https://www.drupal.org/project/drush_make) to download all needed components.
+1. Go to app/ directory:
+```cd app/```
+2. Run drush make script: 
+```drush make foodcoopsystem.make```
