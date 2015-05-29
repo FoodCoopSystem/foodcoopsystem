@@ -16,8 +16,8 @@ Main goal of a project is build easy to install platform for (not only Polish) f
 Installation
 ==============
 
-Application use Drush Make (https://www.drupal.org/project/drush_make) to download all needed components.
-1. Go to app/ directory:
-```cd app/```
-2. Run drush make script: 
-```drush make foodcoopsystem.make```
+Application use [Drush Make](https://www.drupal.org/project/drush_make) to download all needed components.
+
+
+1. Go to `app/` directory: `cd app/`
+1. Run drush make script: `drush make foodcoopsystem.make`
