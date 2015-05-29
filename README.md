@@ -12,6 +12,8 @@ Main goal of a project is build easy to install platform for (not only Polish) f
  
   If you want to help us, say hello by mail: contact(at)foodcoop.pl. Instruction of system and documentation will be avalible here: http://foodcoop.pl/  
 
+Our versioning is following Semantic [Versioning 2.0.0](http://semver.org/).
+
 
 Installation
 ==============
