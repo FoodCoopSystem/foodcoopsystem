@@ -22,4 +22,4 @@ Application use [Drush Make](https://www.drupal.org/project/drush_make) to downl
 
 
 1. Go to `app/` directory: `cd app/`
-1. Run drush make script: `drush make foodcoopsystem.make`
+2. Run drush make script: `drush make foodcoopsystem.make`
