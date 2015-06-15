@@ -50,5 +50,10 @@ app/sites/all/modules/contrib/
 app/sites/all/modules/developer/
 app/sites/example.sites.php
 
-# Additional ignore
+
+### Additional ignore
+# netBeans IDE config dir
 nbproject/
+
+# mkdocs build dir
+site/
