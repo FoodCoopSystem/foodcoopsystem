@@ -208,7 +208,7 @@ $databases = array (
     array (
       'database' => 'foodcoop',
       'username' => 'foodcoop',
-      'password' => 'foodcoop2013',
+      'password' => 'foodcoop',
       'host' => 'localhost',
       'port' => '',
       'driver' => 'mysql',
@@ -525,3 +525,4 @@ $conf['404_fast_html'] = '<html xmlns="http://www.w3.org/1999/xhtml"><head><titl
  * Remove the leading hash signs to disable.
  */
 # $conf['allow_authorize_operations'] = FALSE;
+$conf['file_temporary_path'] = 'tmp/';

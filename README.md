@@ -1,9 +1,25 @@
-[![Build Status](https://travis-ci.org/harijari/foodcoopsystem.svg?branch=foodcoop)](https://travis-ci.org/harijari/foodcoopsystem)
-
-foodcoopsystem
+FoodCoop System
 ==============
+![FoodCoopSystem](http://www.foodcoop.pl/images/logo.png)
 
 [![Build Status](https://travis-ci.org/FoodCoopSystem/foodcoopsystem.svg)](https://travis-ci.org/FoodCoopSystem/foodcoopsystem)
 
- System for Food Cooperative
+FoodCoop System is an open source group ordering and billing system based on Drupal Commerce (Drupal 7) and PHP language.
+
+Main goal of a project is build easy to install platform for (not only Polish) food cooperatives, to help manage orders, stock, tasks and members.
+
+ First version of the system was founded in 2013 by UNDP for Warsaw Food Cooperative and was developed by Obin.org and RatioWeb.pl members. 
  
+  If you want to help us, say hello by mail: contact(at)foodcoop.pl. Instruction of system and documentation will be avalible here: http://foodcoop.pl/  
+
+Our versioning is following Semantic [Versioning 2.0.0](http://semver.org/).
+
+
+Installation
+==============
+
+Application use [Drush Make](https://www.drupal.org/project/drush_make) to download all needed components.
+
+
+1. Go to `app/` directory: `cd app/`
+1. Run drush make script: `drush make foodcoopsystem.make`
