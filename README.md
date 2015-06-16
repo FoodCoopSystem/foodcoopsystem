@@ -12,4 +12,4 @@ FCS is based on Drupal Commerce (Drupal 7) and PHP language. If you want to help
 
 ## Documentation
 
-Please [read the docs](http://foodcoopsystem.readthedocs.org).
+Please <a href="http://foodcoopsystem.readthedocs.org" target="_blank">read the docs</a>.
