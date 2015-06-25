@@ -1,0 +1,21 @@
+default:
+  suites:
+    default:
+      contexts:
+        - FeatureContext
+        - Drupal\DrupalExtension\Context\DrupalContext
+        - Drupal\DrupalExtension\Context\MinkContext
+        - Drupal\DrupalExtension\Context\MessageContext
+        - Drupal\DrupalExtension\Context\DrushContext
+  extensions:
+    Behat\MinkExtension:
+      goutte: ~
+      selenium2: ~
+      base_url: 127.0.0.1
+    Drupal\DrupalExtension:
+      blackbox: ~
+      api_driver: 'drupal'
+      drupal:
+        drupal_root: '/var/www/'
+      region_map:
+          tabs: ".tabs"

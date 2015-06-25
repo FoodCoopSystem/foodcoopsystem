@@ -50,10 +50,9 @@ app/sites/all/modules/contrib/
 app/sites/all/modules/developer/
 app/sites/example.sites.php
 
-
-### Additional ignore
-# netBeans IDE config dir
+#Files related to docker dev environment
+docker-compose.yml
+logs/
+# Additional ignore
 nbproject/
-
-# mkdocs build dir
-site/
+.idea/
