@@ -1,4 +1,4 @@
-#@api
+@javascript
 
 Feature: As an anonymous user I want to check if can see the system
   Scenario: Go to login page

@@ -2,6 +2,7 @@
 
 use Behat\Behat\Hook\Scope\AfterStepScope;
 use Behat\Mink\Driver\Selenium2Driver;
+use Behat\Mink\Driver\GoutteDriver;
 use Drupal\DrupalExtension\Context\RawDrupalContext;
 use Behat\Behat\Context\SnippetAcceptingContext;
 use Behat\Gherkin\Node\PyStringNode;
@@ -21,4 +22,19 @@ class FeatureContext extends RawDrupalContext implements SnippetAcceptingContext
    */
   public function __construct() {
   }
+
+    /**
+     * @AfterStep
+     */
+    public function takeScreenShotAfterFailedStep(afterStepScope $scope)
+    {
+        if (99 === $scope->getTestResult()->getResultCode()) {
+            $driver = $this->getSession()->getDriver();
+            if (!($driver instanceof Selenium2Driver)) {
+               // return;
+            }
+            file_put_contents('test_.png', $this->getSession()->getDriver()->getScreenshot());
+        }
+    }
+
 }
