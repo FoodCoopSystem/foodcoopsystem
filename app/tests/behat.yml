@@ -11,16 +11,13 @@ default:
     Behat\MinkExtension:
       goutte: ~
       selenium2: ~
-      base_url: 127.0.0.1 
-      browser_name: firefox
+      base_url: http://localhost
     Drupal\DrupalExtension:
       blackbox: ~
-#      api_driver: 'drupal'
-#      drupal:
-#        drupal_root: '/var/www/'
+      api_driver: 'drupal'
+      drush:
+          alias: 'local'
+      drupal:
+        drupal_root: '/var/www/'
       region_map:
-          tabs: ".tabs"
-firefox:
-    extensions:
-        Behat\MinkExtension\Extension:
-            browser_name: firefox
+        tabs: ".tabs"
