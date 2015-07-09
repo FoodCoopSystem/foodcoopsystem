@@ -7,4 +7,5 @@ sites/*/private
 
 #BDD environment
 tests/vendor
+tests/errors/*.html
 composer.phar
