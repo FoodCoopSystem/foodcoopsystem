@@ -39,9 +39,9 @@ rm -rf xmlrpc.php
 drush -y make --contrib-destination=sites/all/ foodcoopsystem.make
 
 #(First time only) Move files to proper dir.
-mkdir sites/default/files
+mkdir -p sites/default/files
 chmod 777 -R sites/default/files/
-mkdir tmp
+mkdir -p tmp
 chmod 777 -R tmp
 
 #cp -R conf/demo/files/* sites/default/files/
@@ -50,9 +50,19 @@ chmod 777 -R tmp
 #(Move settings.php and sites.php to proper dir.
 cp ../conf/settings/settings.php sites/default/
 
+if [ ! -f sites/default/local.settings.php ]; then
+  echo "You need to store local.settings.php file into sites/default/ subdirectory. This file has to include database access credentials.";
+  exit 1;
+fi
+
 #Update script fo database changes.
+
 gunzip ../database/foodcoop.sql.gz
 drush sql-drop -y
 drush sql-cli < ../database/foodcoop.sql
+drush -y updatedb
+
+drush -y vset preprocess_css 0
+drush -y vset preprocess_js 0
 drush fra -y
 drush cc all
