@@ -3,7 +3,7 @@ default:
     default:
       contexts:
         - FeatureContext
-        - Drupal\DrupalExtension\Context\DrupalContext
+        - FoodCoopDrupalContext
         - Drupal\DrupalExtension\Context\MinkContext
         - Drupal\DrupalExtension\Context\MessageContext
         - Drupal\DrupalExtension\Context\DrushContext
@@ -18,6 +18,11 @@ default:
       drush:
           alias: 'local'
       drupal:
-        drupal_root: '/var/www/'
+        drupal_root: '/home/jsobiecki/workspace/codebase/ratioweb.foodcoopsystem/app'
       region_map:
         tabs: ".tabs"
+      text:
+        username_field: 'Login albo mejl.'
+        password_field: 'Hasło'
+        log_in: 'Zaloguj się'
+        log_out: 'Wyloguj'

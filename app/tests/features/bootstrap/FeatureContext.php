@@ -43,7 +43,7 @@ class FeatureContext extends RawDrupalContext implements SnippetAcceptingContext
     public function save_step_as_html(afterStepScope $scope) {
 
         $html_data = $this->getSession()->getDriver()->getContent();
-        $file_and_path = dirname(__FILE__) . '/../../errors/fcs_' . $scope->getStep()->getText() . '.html';
+        $file_and_path = dirname(__FILE__) . '/../../errors/fcs_' . str_replace([' ','"', '/'], ['_', '_', '_'], $scope->getStep()->getText()) . '.html';
         file_put_contents($file_and_path, $html_data);
     }
 
