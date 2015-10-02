@@ -1,4 +1,4 @@
-## FoodCoop System
+## Prototype - FoodCoop System
 
 ![FoodCoopSystem](http://www.foodcoop.pl/images/logo.png)
 
